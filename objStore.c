@@ -29,24 +29,27 @@
 // con apposite lock
 
 // Strutture dati:
-// -users: lista di
-// -	char* name
-// -	char* path dir ?
-// -	objects* object
-// -	users* next
+// 	-users: lista di
+// 	-char* name
+// 	-char* path dir ?
+// 	-objects* object
+// 	-users* next
 // -objects: lista di
 // 		-char* name
 // 		-int len
 // 		-objects* next
 
 // Necessito di una libreria per la gestione di tali strutture dati
-// Nome da definire
+// user e object
 
 // Necessito di una libreria per la gestione dei file
-// Nome da definire
+// fileops
 
 #include "message.h"
 #include "stats.h"
+#include "object.h"
+#include "user.h"
+#include "fileops.h"
 
 int main(int argc, char *argv[]) {
 
