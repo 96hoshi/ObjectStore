@@ -6,12 +6,11 @@
 // -la correttezza dei nomi (utenti e dati)
 // 	-standard POSIX
 // 	-!= NULL
-// 	-univoco nella cartella
+// 	-univoco nella cartella ----> controllo lato server
 // -la correttezza dei dati
-// 	-len > 0
+// 	-len >= 0 ------------------> un utente può salvare oggetti vuoti
 // -la correttezza della dim dei dati
-// 	-len == dim del block ---> problemi socket?
-// 	-block != NULL
+// 	-block == NULL <=> len == 0
 
 // Se questi controlli sono verificati manda al server una socket con l'header
 // creato da message.h
