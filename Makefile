@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -std=c99 -Wall -pedantic
+CFLAGS = -std=c99 -Wall -g -pedantic
 
 .PHONY = clean all test
 
@@ -26,6 +26,12 @@ runclient : client
 
 runserver : objStore
 	./objStore
+
+valgrindclient : client
+	valgrind ./$^
+
+valgrindserver : objStore
+	valgrind ./$^
 
 
 all : $(TARGETS)
