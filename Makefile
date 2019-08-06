@@ -11,7 +11,7 @@ OBJECTS = protocol.o message.o user.o object.o
 client : libprotocol.a stats.h
 	$(CC) $(CFLAGS) $@.c -o $@ -L. -lprotocol
 
-objStore : message.o user.o object.o stats.h
+objStore : message.o object.o user.o stats.h
 
 protocol.o : protocol.c protocol.h message.o
 
@@ -29,13 +29,13 @@ runclient : client
 	./client
 
 runserver : objStore
-	./objStore
+	./objStore pippo
 
 valgrindclient : client
 	valgrind ./$^
 
 valgrindserver : objStore
-	valgrind ./$^
+	valgrind ./$^ pippo
 
 
 all : $(TARGETS)
