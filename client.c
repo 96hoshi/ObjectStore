@@ -23,6 +23,7 @@
 #include "protocol.h"
 #include "stats.h"
 #include <stdio.h>
+#include <stdlib.h>
 
 int main(int argc, char *argv[]) {
 
