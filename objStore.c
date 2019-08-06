@@ -49,9 +49,34 @@
 #include "stats.h"
 #include "object.h"
 #include "user.h"
-#include "fileops.h"
+#include <stdio.h>
+#include <stdlib.h>
+//#include "fileops.h"
 
 int main(int argc, char *argv[]) {
 
+	if (argc < 2) {
+		fprintf(stderr, "Non ci sono abbastanza input");
+		exit(EXIT_FAILURE);
+	}
+
+	agrc--;
+	argv++;
+
+	user test = NULL;
+
+	//TESTING
+	addUs(test, argv[0]);
+	printUsers(test);
+
+	// addUs(test, "pluto");
+	// printUsers(test);
+
+	// user *searched = searchUs(test, argv[0]);
+
+	// deleteUs(test, argv[0]);
+	// printUsers(test);
+
+	cleanUsers(test);
 	return 0;
 }
