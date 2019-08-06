@@ -5,17 +5,21 @@ CFLAGS = -std=c99 -Wall -g -pedantic
 
 #Nomi simbolici
 TARGETS = client objStore libprotocol.a
-OBJECTS = protocol.o message.o
+OBJECTS = protocol.o message.o user.o object.o
 
 #Regole
 client : libprotocol.a stats.h
-	$(CC) $(CFLAGS) client.c -o client -L. -lprotocol
+	$(CC) $(CFLAGS) $@.c -o $@ -L. -lprotocol
 
-objStore : message.o stats.h
+objStore : message.o user.o object.o stats.h
 
 protocol.o : protocol.c protocol.h message.o
 
 message.o : message.c message.h
+
+user.o : user.c user.h object.o
+
+object.o : object.c object.h
 
 libprotocol.a : $(OBJECTS)
 	ar rvs $@ $^
