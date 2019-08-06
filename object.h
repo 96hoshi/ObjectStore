@@ -20,7 +20,7 @@ typedef struct o {
 // La lista non deve contenere duplicati
 int addObj(object **list, char *nameObj);
 
-object *searchObj(object **list, char *nameObj);
+object *searchObj(object *list, char *nameObj);
 
 int deleteObj(object **list, char *nameObj);
 
