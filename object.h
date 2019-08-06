@@ -11,7 +11,7 @@
 
 typedef struct o {
 	char *name;
-	size_t len;
+	int len;
 	struct o *next;
 }object;
 
@@ -20,7 +20,7 @@ typedef struct o {
 // La lista non deve contenere duplicati
 int addObj(object **list, char *nameObj);
 
-object searchObj(object **list, char *nameObj);
+object *searchObj(object **list, char *nameObj);
 
 int deleteObj(object **list, char *nameObj);
 
@@ -30,6 +30,5 @@ void printObjects(object **list);
 // Procedure di supporto
 // Cancella tutti i dati :eyes:
 void freeObjects(object **list);
-
 
 #endif

@@ -26,14 +26,14 @@ int addUs(user **list, char *nameUs);
 
 // Cerca un utente e lo restituisce, se esiste
 // NULL altrimenti
-user searchUs(user *list, char *nameUs);
+user *searchUs(user *list, char *nameUs);
 
 // Elimina un utente dalla lista
 // Restituisce 0 se effettua la cancellazione con successo, -1 altrimenti
 int deleteUs(user **list, char *nameUs);
 
 // Stampa tutta la lista
-void printUsers(user **list);
+void printUsers(user *list);
 
 // Procedure di supporto
 // Libera la memoria di un singolo nodo

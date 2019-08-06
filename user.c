@@ -4,9 +4,6 @@
 // 	struct us *next;
 // }user;
 
-
-//NOPE! Fare progettazione prima!
-
 #include "user.h"
 #include "object.h"
 #include <stdio.h>
@@ -15,7 +12,7 @@
 
 int addUs(user **list, char *nameUs)
 {
-	if (nameUs == NULL || searchUs(list, nameUs) != NULL) {
+	if (nameUs == NULL || searchUs(*list, nameUs) != NULL) {
 		return -1;
 	}
 
@@ -34,7 +31,7 @@ int addUs(user **list, char *nameUs)
 	return 0;
 }
 
-user searchUs(user *list, char *nameUs)
+user *searchUs(user *list, char *nameUs)
 {
 	if(list == NULL || nameUs == NULL) {
 		return NULL;
@@ -64,7 +61,7 @@ int deleteUs(user **list, char *nameUs)
 	while(curr->next != NULL) {
 		if(!strcmp(nameUs, curr->name)) {
 			if(prev == NULL) {
-				*lista = curr->next;
+				*list = curr->next;
 			} else {
 				prev->next = curr->next;
 			}
@@ -80,13 +77,13 @@ int deleteUs(user **list, char *nameUs)
 	return -1;
 }
 
-void printUsers(user **list)
+void printUsers(user *list)
 {
-	if(*list == NULL) {
+	if(list == NULL) {
 		return;
 	}
 
-	user *curr = *list;
+	user *curr = list;
 
 	while(curr != NULL) {
 		printf("%s\n", curr->name);
@@ -97,20 +94,20 @@ void printUsers(user **list)
 void freeNode(user *u) {
 	free(u->name);
 	if(u->obj != NULL) {
-		freeObjects(u->obj);
+		//freeObjects(u->obj);
 	}
 	free(u);
 }
 
 void cleanUsers(user **list)
 {
-	if(*list == NULL) {
+	if((*list) == NULL) {
 		return;
 	}
 
-	while(*list != NULL) {
+	while((*list) != NULL) {
 		user *curr = *list;
-		*list = *list->next;
+		*list = (*list)->next;
 		freeNode(curr);
 	}
 }
