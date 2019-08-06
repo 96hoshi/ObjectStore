@@ -25,10 +25,10 @@ object *searchObj(object **list, char *nameObj);
 int deleteObj(object **list, char *nameObj);
 
 // Stampa tutta la lista
-void printObjects(object **list);
+void printObjects(object *list);
 
 // Procedure di supporto
 // Cancella tutti i dati :eyes:
-void freeObjects(object **list);
+void cleanObjects(object *list);
 
 #endif

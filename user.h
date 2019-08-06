@@ -15,7 +15,8 @@
 
 typedef struct us {
 	char *name;
-	object *obj;
+	//object *obj;
+	char *obj;
 	struct us *next;
 }user;
 
@@ -40,6 +41,6 @@ void printUsers(user *list);
 void freeNode(user *u);
 
 // Cancella tutti gli user
-void cleanUsers(user **list);
+void cleanUsers(user *list);
 
 #endif

@@ -19,9 +19,8 @@ int addUs(user **list, char *nameUs)
 	user *new = (user *)malloc(sizeof(user));
 	new->obj = NULL;
 	new->next = NULL;
-	char *string = new->name;
-	string = (char *)malloc(strlen(nameUs) * sizeof(char));
-	string = strcpy(string, nameUs);
+	new->name = (char *)malloc((strlen(nameUs) + 1) * sizeof(char));
+	new->name = strcpy(new->name, nameUs);
 
 	if (*list != NULL) {
 		new->next = *list;
@@ -37,13 +36,11 @@ user *searchUs(user *list, char *nameUs)
 		return NULL;
 	}
 
-	user *curr = list;
-
-	while(curr != NULL) {
-		if (!strcmp(nameUs, curr->name)) {
-			return curr;
+	while(list != NULL) {
+		if (!strcmp(nameUs, list->name)) {
+			return list;
 		}
-		curr = curr->next;
+		list = list->next;
 	}
 
 	return NULL;
@@ -83,11 +80,9 @@ void printUsers(user *list)
 		return;
 	}
 
-	user *curr = list;
-
-	while(curr != NULL) {
-		printf("%s\n", curr->name);
-		curr = curr->next;
+	while(list != NULL) {
+		printf("%s\n", list->name);
+		list = list->next;
 	}
 }
 
@@ -99,15 +94,15 @@ void freeNode(user *u) {
 	free(u);
 }
 
-void cleanUsers(user **list)
+void cleanUsers(user *list)
 {
-	if((*list) == NULL) {
+	if(list == NULL) {
 		return;
 	}
 
-	while((*list) != NULL) {
-		user *curr = *list;
-		*list = (*list)->next;
+	while(list != NULL) {
+		user *curr = list;
+		list = list->next;
 		freeNode(curr);
 	}
 }

@@ -19,12 +19,12 @@ int deleteObj(object **list, char *nameObj)
 	return 0;
 }
 
-void printObjects(object **list)
+void printObjects(object *list)
 {
 
 }
 
-void freeObjects(object **list)
+void freeObjects(object *list)
 {
 
 }
