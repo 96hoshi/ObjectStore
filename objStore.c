@@ -51,6 +51,7 @@
 #include "user.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h>
 //#include "fileops.h"
 
 int main(int argc, char *argv[]) {
@@ -60,17 +61,14 @@ int main(int argc, char *argv[]) {
 		exit(EXIT_FAILURE);
 	}
 
-	agrc--;
+	argc--;
 	argv++;
 
-	user test = NULL;
+	user *test = NULL;
 
 	//TESTING
-	addUs(test, argv[0]);
+	addUs(&test, argv[0]);
 	printUsers(test);
-
-	// addUs(test, "pluto");
-	// printUsers(test);
 
 	// user *searched = searchUs(test, argv[0]);
 
