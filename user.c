@@ -9,7 +9,9 @@
 
 #include "user.h"
 #include "object.h"
-
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 int addUs(user **list, char *nameUs)
 {
