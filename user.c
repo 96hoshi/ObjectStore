@@ -58,7 +58,7 @@ int deleteUs(user **list, char *nameUs)
 	user *prev = NULL;
 	user *curr = *list;
 
-	while(curr->next != NULL) {
+	while(curr != NULL) {
 		if(!strcmp(nameUs, curr->name)) {
 			if(prev == NULL) {
 				*list = curr->next;
