@@ -9,26 +9,30 @@
 #ifndef OBJECT_H
 #define OBJECT_H
 
-typedef struct o {
+#include <stdlib.h>
+
+
+typedef struct {
 	char *name;
-	int len;
-	struct o *next;
-}object;
+	size_t len;
+} object;
 
-// Aggiunge un oggetto di nome nameObj alla lista 
-// Ritora 0 se l'inserimento è avvenuto in maniera corretta, -1 altrimenti
-// La lista non deve contenere duplicati
-int addObj(object **list, char *nameObj);
+// - Alloca memoria per una struttura di tipo object
+// - Alloca (len + 1) byte in cui copiare la stringa name
+// - Copia la stringa name nella struttura object e mette '\0'
+//   come ultimo carattere della stringa copiata
+// - Copia la variabile len nella struttura object
+object *object_create(char *name, size_t len);
 
-object *searchObj(object *list, char *nameObj);
+// - Se entrambi gli object sono NULL ritrona 0
+// - Se il primo è NULL ritorna 1
+// - Se il secondo è NULL ritorna -1
+// - Se nessuno degli object è NULL ritorno il valore di strcmp()
+//   applicato ai name dei due object
+int object_compare(void *o1, void *o2);
 
-int deleteObj(object **list, char *nameObj);
-
-// Stampa tutta la lista
-void printObjects(object *list);
-
-// Procedure di supporto
-// Cancella tutti i dati :eyes:
-void cleanObjects(object *list);
+// - Libera la memoria utilizzata per la stringa name
+// - Libera la memoria utilizzata per l'object o
+void object_destroy(object * o);
 
 #endif

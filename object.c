@@ -1,100 +1,59 @@
-// -objects: lista di
-// 		-char* name
-// 		-size_t len
-// 		-objects* next
-
 #include "object.h"
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <stddef.h>
 
-int addObj(object **list, char *nameObj)
+// - Alloca memoria per una struttura di tipo object
+// - Alloca (strlen(name) + 1) byte in cui copiare la stringa name
+// - Copia la stringa name nella struttura object
+// - Copia la variabile len nella struttura object
+object *object_create(char *name, size_t len)
 {
-	if (nameObj == NULL || searchObj(*list, nameObj) != NULL) {
-		return -1;
-	}
-
-	object *new = (object *)malloc(sizeof(object));
-	new->name = (char *)malloc((strlen(nameObj) + 1) * sizeof(char));
-	new->name = strcpy(new->name, nameObj);
-	new->next = NULL;
-
-	if (*list != NULL) {
-		new->next = *list;
-	}
-	*list = new;
-
-	return 0;
-}
-
-object *searchObj(object *list, char *nameObj)
-{
-	if(list == NULL || nameObj == NULL) {
+	if(name == NULL) {
 		return NULL;
 	}
 
-	while(list != NULL) {
-		if (!strcmp(nameObj, list->name)) {
-			return list;
-		}
-		list = list->next;
-	}
+	size_t name_len = strlen(name) + 1;
+	object *o = (object *)calloc(1, sizeof(object));
+	o->name = (char *)calloc(name_len, sizeof(char));
+	o->name = strcpy(o->name, name);
+	o->len = len;
 
-	return NULL;
+	return o;
+
 }
 
-int deleteObj(object **list, char *nameObj)
+// - Se entrambi gli object sono NULL ritrona 0
+// - Se il primo è NULL ritorna 1
+// - Se il secondo è NULL ritorna -1
+// - Se nessuno degli object è NULL ritorno il valore di strcmp()
+//   applicato ai name dei due object
+int object_compare(void *o1, void *o2)
 {
-	if(*list == NULL || nameObj == NULL) {
+	object *obj1 = (object *)o1;
+	object *obj2 = (object *)o2;
+
+	if(obj1 == NULL && obj2 == NULL) {
+		return 0;
+	}
+
+	if(obj1 == NULL) {
+		return 1;
+	}
+
+	if(obj2 == NULL) {
 		return -1;
 	}
 
-	object *prev = NULL;
-	object *curr = *list;
-
-	while(curr != NULL) {
-		if(!strcmp(nameObj, curr->name)) {
-			if(prev == NULL) {
-				*list = curr->next;
-			} else {
-				prev->next = curr->next;
-			}
-			free(curr->name);
-			free(curr);
-
-			return 0;
-		} else {
-			prev = curr;
-			curr = curr->next;
-		}
-	}
-
-	return -1;
+	return strcmp(obj1->name, obj2->name);
 }
 
-void printObjects(object *list)
+// - Libera la memoria utilizzata per la stringa name
+// - Libera la memoria utilizzata per l'object o
+void object_destroy(object *o)
 {
-	if(list == NULL) {
+	if (o == NULL) {
 		return;
 	}
 
-	while(list != NULL) {
-		printf("%s\n", list->name);
-		list = list->next;
-	}
-}
-
-void freeObjects(object *list)
-{
-	if(list == NULL) {
-		return;
-	}
-
-	while(list != NULL) {
-		object *curr = list;
-		list = list->next;
-		free(curr->name);
-		free(curr);
-	}
+	free(o->name);
+	free(o);
 }
