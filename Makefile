@@ -4,14 +4,14 @@ CFLAGS = -std=c99 -Wall -g -pedantic
 .PHONY = clean all test
 
 #Nomi simbolici
-TARGETS = client objStore libprotocol.a
-OBJECTS = protocol.o message.o user.o object.o
+TARGETS = client objStore libprotocol.a tests
+OBJECTS = protocol.o message.o object.o
 
 #Regole
 client : libprotocol.a stats.h
 	$(CC) $(CFLAGS) $@.c -o $@ -L. -lprotocol
 
-objStore : message.o object.o user.o stats.h
+objStore : message.o object.o stats.h
 
 protocol.o : protocol.c protocol.h message.o
 
@@ -24,18 +24,19 @@ object.o : object.c object.h
 libprotocol.a : $(OBJECTS)
 	ar rvs $@ $^
 
+tests : tests.c object.o
 
 runclient : client
 	./client
 
 runserver : objStore
-	./objStore pippo
+	./objStore
 
 valgrindclient : client
 	valgrind ./$^
 
 valgrindserver : objStore
-	valgrind ./$^ pippo
+	valgrind ./$^
 
 
 all : $(TARGETS)
@@ -44,8 +45,9 @@ clean :
 	@echo "Removing garbage"
 	-rm $(OBJECTS) $(TARGETS)
 
-test :
+test : tests
 	@echo "Testing ... "
+	./tests
 
 
 #Warnings so far:
