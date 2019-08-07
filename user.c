@@ -32,7 +32,7 @@ int addUs(user **list, char *nameUs)
 
 user *searchUs(user *list, char *nameUs)
 {
-	if(list == NULL || nameUs == NULL) {
+	if(nameUs == NULL) {
 		return NULL;
 	}
 
