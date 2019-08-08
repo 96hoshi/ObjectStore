@@ -13,10 +13,11 @@
 #define USER_H
 
 #include "object.h"
+#include "list.h"
 
 typedef struct {
 	char *name;
-	list_t *objects;
+	list *objects;
 	int fd;
 } user;
 
@@ -29,7 +30,7 @@ user *user_create(char *name, int fd);
 
 // - Cerca con una funzione di libreria l'oggetto di nome name
 //   nella lista objs
-object *user_search_object(char *name);
+object *user_search_object(user *u, char *name);
 
 // - Se entrambi gli user sono NULL ritrona 0
 // - Se il primo è NULL ritorna 1
