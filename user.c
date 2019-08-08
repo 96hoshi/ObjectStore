@@ -1,108 +1,62 @@
-// typedef struct us {
-// 	char *name;
-// 	object *obj;
-// 	struct us *next;
-// }user;
-
 #include "user.h"
-#include "object.h"
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "object.h"
 
-int addUs(user **list, char *nameUs)
+
+// - Alloca memoria per una struttura di tipo user
+// - Alloca (strlen(name) + 1) byte in cui copiare la stringa name
+// - Copia la stringa name nella struttura user
+// - Crea la lista di object
+// - Copia nel campo fd il valore della socket usata dall'user
+user *user_create(char *name, int fd) 
 {
-	if (nameUs == NULL || searchUs(*list, nameUs) != NULL) {
-		return -1;
-	}
-
-	user *new = (user *)malloc(sizeof(user));
-	new->obj = NULL;
-	new->next = NULL;
-	new->name = (char *)malloc((strlen(nameUs) + 1) * sizeof(char));
-	new->name = strcpy(new->name, nameUs);
-
-	if (*list != NULL) {
-		new->next = *list;
-	}
-	*list = new;
-
-	return 0;
-}
-
-user *searchUs(user *list, char *nameUs)
-{
-	if(nameUs == NULL) {
+	if(name == NULL) {
 		return NULL;
 	}
 
-	while(list != NULL) {
-		if (!strcmp(nameUs, list->name)) {
-			return list;
-		}
-		list = list->next;
-	}
+	size_t name_len = strlen(name) + 1;
+	user *u = (user *)calloc(1, sizeof(user));
+	u->name = (char *)calloc(name_len, sizeof(char));
+	u->name = strcpy(u->name, name);
+	//u->objects = list_create(); TODO: uncomment when list_t is created
+	u->fd = fd;
 
+	return u;
+}
+
+
+// - Cerca con una funzione di libreria l'oggetto di nome name
+//   nella lista objs
+object *user_search_object(char *name) //TODO: implement it when list_t is created
+{
 	return NULL;
 }
 
-int deleteUs(user **list, char *nameUs)
+// - Se entrambi gli user sono NULL ritrona 0
+// - Se il primo è NULL ritorna 1
+// - Se il secondo è NULL ritorna -1
+// - Se nessuno degli user è NULL ritorno il valore di strcmp()
+//   applicato ai name dei due user
+int user_compare(void *u1, void *u2)
 {
-	if(*list == NULL || nameUs == NULL) {
-		return -1;
-	}
+	user *user1 = (user *)u1;
+	user *user2 = (user *)u2;
 
-	user *prev = NULL;
-	user *curr = *list;
+	if(user1 == NULL && user2 == NULL) return 0;
+	if(user1 == NULL) return 1;
+	if(user2 == NULL) return -1;
 
-	while(curr != NULL) {
-		if(!strcmp(nameUs, curr->name)) {
-			if(prev == NULL) {
-				*list = curr->next;
-			} else {
-				prev->next = curr->next;
-			}
-			freeNode(curr);
-
-			return 0;
-		} else {
-			prev = curr;
-			curr = curr->next;
-		}
-	}
-
-	return -1;
+	return strcmp(user1->name, user2->name);
 }
 
-void printUsers(user *list)
+// - Libera la memoria utilizzata per la stringa name
+// - Libera la memoria utilizzata dalla lista di object
+// - Libera la memoria utilizzata per la struttura user
+void user_destroy(user *u)
 {
-	if(list == NULL) {
-		return;
-	}
-
-	while(list != NULL) {
-		printf("%s\n", list->name);
-		list = list->next;
-	}
-}
-
-void freeNode(user *u) {
-	free(u->name);
-	if(u->obj != NULL) {
-		//freeObjects(u->obj);
-	}
+	if(u == NULL) return;
+	if(u->name != NULL) free(u->name);
+	//list_destroy(objects); TODO: uncomment when list_t is created
 	free(u);
-}
-
-void cleanUsers(user *list)
-{
-	if(list == NULL) {
-		return;
-	}
-
-	while(list != NULL) {
-		user *curr = list;
-		list = list->next;
-		freeNode(curr);
-	}
 }

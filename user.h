@@ -4,43 +4,43 @@
 // Struttura dati:
 // 	-users:
 // 	-char* name
-// 	-char* path dir ?
 // 	-objects* object
-// 	-users* next
+// 	-size_t fd
 
 // Implementazione con liste e lock
 
 #ifndef USER_H
 #define USER_H
 
-typedef struct us {
+#include "object.h"
+
+typedef struct {
 	char *name;
-	//object *obj;
-	char *obj;
-	struct us *next;
-}user;
+	list_t *objects;
+	int fd;
+} user;
 
-// Aggiunge un utente di nome nameUs alla lista 
-// Ritora 0 se l'inserimento è avvenuto in maniera corretta, -1 altrimenti
-// La lista non deve contenere duplicati
-int addUs(user **list, char *nameUs);
+// - Alloca memoria per una struttura di tipo user
+// - Alloca (strlen(name) + 1) byte in cui copiare la stringa name
+// - Copia la stringa name nella struttura user
+// - Crea la lista di object
+// - Copia nel campo fd il valore della socket usata dall'user
+user *user_create(char *name, int fd);
 
-// Cerca un utente e lo restituisce, se esiste
-// NULL altrimenti
-user *searchUs(user *list, char *nameUs);
+// - Cerca con una funzione di libreria l'oggetto di nome name
+//   nella lista objs
+object *user_search_object(char *name);
 
-// Elimina un utente dalla lista
-// Restituisce 0 se effettua la cancellazione con successo, -1 altrimenti
-int deleteUs(user **list, char *nameUs);
+// - Se entrambi gli user sono NULL ritrona 0
+// - Se il primo è NULL ritorna 1
+// - Se il secondo è NULL ritorna -1
+// - Se nessuno degli user è NULL ritorno il valore di strcmp()
+//   applicato ai name dei due user
+int user_compare(void *u1, void *u2);
 
-// Stampa tutta la lista
-void printUsers(user *list);
-
-// Procedure di supporto
-// Libera la memoria di un singolo nodo
-void freeNode(user *u);
-
-// Cancella tutti gli user
-void cleanUsers(user *list);
+// - Libera la memoria utilizzata per la stringa name
+// - Libera la memoria utilizzata dalla lista di object
+// - Libera la memoria utilizzata per la struttura user
+void user_destroy(user *u);
 
 #endif
