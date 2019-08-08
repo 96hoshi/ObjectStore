@@ -31,7 +31,6 @@
 // Strutture dati:
 // 	-users: lista di
 // 	-char* name
-// 	-char* path dir ?
 // 	-objects* object
 // 	-users* next
 // -objects: lista di
@@ -56,25 +55,13 @@
 
 int main(int argc, char *argv[]) {
 
-	if (argc < 2) {
-		fprintf(stderr, "Non ci sono abbastanza input");
-		exit(EXIT_FAILURE);
-	}
+	// if (argc < 2) {
+	// 	fprintf(stderr, "Non ci sono abbastanza input");
+	// 	exit(EXIT_FAILURE);
+	// }
 
-	argc--;
-	argv++;
+	// argc--;
+	// argv++;
 
-	user *test = NULL;
-
-	//TESTING
-	addUs(&test, argv[0]);
-	printUsers(test);
-
-	// user *searched = searchUs(test, argv[0]);
-
-	// deleteUs(test, argv[0]);
-	// printUsers(test);
-
-	cleanUsers(test);
 	return 0;
 }
