@@ -1,4 +1,4 @@
-// Libreria che contiene la struttura dati per contenere gli oggetti
+// Libreria che contiene la struttura dati per contenere l'oggetto
 // e le operazioni per gestirla
 
 #ifndef OBJECT_H
