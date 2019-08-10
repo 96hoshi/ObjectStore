@@ -12,8 +12,9 @@
 #ifndef USER_H
 #define USER_H
 
-#include "object.h"
 #include "list.h"
+#include "object.h"
+
 
 typedef struct {
 	char *name;
@@ -30,18 +31,19 @@ user *user_create(char *name, int fd);
 
 // - Cerca con una funzione di libreria l'oggetto di nome name
 //   nella lista objs
-object *user_search_object(user *u, char *name);
+object *user_search_object(user *u, void *name);
 
-// - Se entrambi gli user sono NULL ritrona 0
-// - Se il primo è NULL ritorna 1
-// - Se il secondo è NULL ritorna -1
-// - Se nessuno degli user è NULL ritorno il valore di strcmp()
-//   applicato ai name dei due user
-int user_compare(void *u1, void *u2);
+// - Confronta un user con un atro user
+int user_compare(void *usr1, void *usr2);
+
+// - Confronta un user tramite la stringa usr_name
+int user_compare_name(void *usr, void *usr_name);
 
 // - Libera la memoria utilizzata per la stringa name
 // - Libera la memoria utilizzata dalla lista di object
 // - Libera la memoria utilizzata per la struttura user
-void user_destroy(user *u);
+void user_destroy(void *usr);
+
+void user_print(void *usr);
 
 #endif

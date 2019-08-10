@@ -1,4 +1,5 @@
 #include "user.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -10,36 +11,58 @@ user *user_create(char *name, int fd)
 	size_t name_len = strlen(name) + 1;
 	user *u = (user *)calloc(1, sizeof(user));
 	u->name = (char *)calloc(name_len, sizeof(char));
-	u->name = strcpy(u->name, name);
-	u->objects = list_create(object_compare, object_destroy);
+	u->name = strncpy(u->name, name, name_len);
+	u->objects = list_create(object_compare, object_compare_name, object_destroy, object_print);
 	u->fd = fd;
 
 	return u;
 }
 
-object *user_search_object(user *u, char *name)
+object *user_search_object(user *u, void *name)
 {
 	if (name == NULL) return NULL;
 
-	return (object *)list_search(u->objects, name);
+	return (object *)list_search_field_unsafe(u->objects, name);
 }
 
-int user_compare(void *u1, void *u2)
+int user_compare(void *usr1, void *usr2)
 {
-	user *user1 = (user *)u1;
-	user *user2 = (user *)u2;
+	user *u1 = (user *)usr1;
+	user *u2 = (user *)usr2;
 
-	if (user1 == NULL && user2 == NULL) return 0;
-	if (user1 == NULL) return 1;
-	if (user2 == NULL) return -1;
+	if (u1 == NULL && u2 == NULL) return 0;
+	if (u1 == NULL) return 1;
+	if (u2 == NULL) return -1;
 
-	return strcmp(user1->name, user2->name);
+	return strcmp(u1->name, u2->name);
 }
 
-void user_destroy(user *u)
+int user_compare_name(void *usr, void *usr_name)
 {
-	if (u == NULL) return;
+	user *u = (user *)usr;
+	char *username = (char *)usr_name;
+
+	if (u == NULL && username == NULL) return 0;
+	if (u == NULL) return 1;
+	if (username == NULL) return -1;
+
+	return strcmp(u->name, username);
+}
+
+void user_destroy(void *usr)
+{
+	if (usr == NULL) return;
+	user *u = (user *)usr;
 	if (u->name != NULL) free(u->name);
-	list_destroy(u->objects);
+	if (u->objects != NULL) list_destroy(u->objects);
 	free(u);
+}
+
+void user_print(void *usr)
+{
+	if (usr == NULL) return;
+	user *u = (user *)usr;
+
+	if (u->name != NULL) printf("User name: %s\n", u->name);
+	if (u->objects != NULL) list_print(u->objects);
 }
