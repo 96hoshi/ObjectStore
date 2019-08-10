@@ -4,8 +4,8 @@ CFLAGS = -std=c99 -Wall -g -pedantic
 .PHONY = clean all test
 
 #Nomi simbolici
-TARGETS = client objStore libprotocol.a tests
-OBJECTS = protocol.o message.o object.o
+TARGETS = client objStore libprotocol.a tests object.o user.o list.o
+OBJECTS = protocol.o message.o 
 
 #Regole
 client : libprotocol.a stats.h
@@ -21,10 +21,13 @@ user.o : user.c user.h object.o
 
 object.o : object.c object.h
 
+list.o : list.c list.h
+
+
 libprotocol.a : $(OBJECTS)
 	ar rvs $@ $^
 
-tests : tests.c object.o
+tests : tests.c object.o user.o list.o
 
 runclient : client
 	./client
@@ -47,7 +50,7 @@ clean :
 
 test : tests
 	@echo "Testing ... "
-	./tests
+	valgrind ./tests
 
 
 #Warnings so far:
