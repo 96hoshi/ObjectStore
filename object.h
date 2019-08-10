@@ -17,15 +17,16 @@ typedef struct {
 // - Copia la variabile len nella struttura object
 object *object_create(char *name, size_t len);
 
-// - Se entrambi gli object sono NULL ritrona 0
-// - Se il primo è NULL ritorna 1
-// - Se il secondo è NULL ritorna -1
-// - Se nessuno degli object è NULL ritorno il valore di strcmp()
-//   applicato ai name dei due object
-int object_compare(void *o1, void *o2);
+// TODO: Scrivere la specifica
+int object_compare(void *obj1, void *obj2);
+
+// TODO: Scrivere la specifica
+int object_compare_name(void *obj, void *obj_name);
 
 // - Libera la memoria utilizzata per la stringa name
 // - Libera la memoria utilizzata per l'object o
-void object_destroy(object * o);
+void object_destroy(void *obj);
+
+void object_print(void *obj);
 
 #endif

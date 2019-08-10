@@ -1,4 +1,5 @@
 #include "object.h"
+#include <stdio.h>
 #include <string.h>
 
 object *object_create(char *name, size_t len)
@@ -14,21 +15,41 @@ object *object_create(char *name, size_t len)
 	return o;
 }
 
-int object_compare(void *o1, void *o2)
+int object_compare(void *obj1, void *obj2)
 {
-	object *obj1 = (object *)o1;
-	object *obj2 = (object *)o2;
+	object *o1 = (object *)obj1;
+	object *o2 = (object *)obj2;
 
-	if (obj1 == NULL && obj2 == NULL) return 0;
-	if (obj1 == NULL) return 1;
-	if (obj2 == NULL) return -1;
+	if (o1 == NULL && o2 == NULL) return 0;
+	if (o1 == NULL) return 1;
+	if (o2 == NULL) return -1;
 
-	return strcmp(obj1->name, obj2->name);
+	return strcmp(o1->name, o2->name);
 }
 
-void object_destroy(object *o)
+int object_compare_name(void *obj, void *obj_name)
 {
-	if (o == NULL) return;
+	object *o = (object *)obj;
+	char *objname = (char *)obj_name;
+
+	if (o == NULL && objname == NULL) return 0;
+	if (o == NULL) return 1;
+	if (objname == NULL) return -1;
+
+	return strcmp(o->name, objname);
+}
+
+void object_destroy(void *obj)
+{
+	if (obj == NULL) return;
+	object *o = (object *)obj;
 	if (o->name != NULL) free(o->name);
 	free(o);
+}
+
+void object_print(void *obj)
+{
+	if (obj == NULL) return;
+	object *o = (object *)obj;
+	if (o->name != NULL) printf("Object name: %s\n", o->name);
 }
