@@ -1,8 +1,10 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "object.h"
 #include "user.h"
 #include "list.h"
+#include "message.h"
 
 #define OBJS_N 2
 void test_object()
@@ -63,10 +65,6 @@ void test_list()
 	user *duplicate_u = user_create("a", -1);
 	user *wrong_u = user_create("w", -1);
 
-	err = list_insert_unsafe(user_list, duplicate_u);
-	if (err != list_duplicate) test++;
-
-
 	// Search_field tests
 	user *u = (user *)list_search_field_unsafe(user_list, duplicate_u->name);
 	if (u == NULL) test++;
@@ -115,11 +113,43 @@ void test_list()
 
 	printf("LIST TEST %s", test ? "FAILED!\n" : "PASSED!\n");
 }
+void message_print(message *m) {
+	printf("m->buff = %s\n", m->buff);
+	printf("m->OP = %d\n", m->OP);
+	printf("m->name = %s\n", m->name);
+	printf("m->len = %d\n", m->len);
+	printf("m->data = %p\n", m->data);
+}
+
+void test_message()
+{
+	int test = 0;
+
+	char *data = (char *)calloc(strlen("ciao") + 1, sizeof(char));
+	strcpy(data, "ciao");
+
+	message *msg = message_create(message_store, "pluto", 5, (void *)data);
+	message_print(msg);
+
+	char *prova = message_to_string(msg);
+	printf("MESSAGE_TO_STRING try: %s\n", prova);
+	message_destroy(msg);
+
+	// char *string = (char *)calloc(strlen("STORE pippo 5 \n aooo") + 1, sizeof(char));
+	// strcpy(string, "STORE pippo 5 \n ao ok");
+
+	// message *m = string_to_message(string);
+	// message_print(m);
+	// message_destroy(m);
+
+	printf("MESSAGE TEST %s", test ? "FAILED!\n" : "PASSED!\n");
+}
 
 int main(int argc, char * argv[])
 {
-	test_object();
-	test_list();
+	// test_object();
+	// test_list();
+	test_message();
 
 	return 0;
 }
