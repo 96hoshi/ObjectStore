@@ -164,7 +164,6 @@ char *message_to_string(message *m)
 		// data-->OP len \n data
 		case message_data: {
 			//
-			//int size_len = snprintf(NULL, 0, "%d", m->len);
 			break;
 		}
 		// leave, ok-->OP \n
