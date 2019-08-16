@@ -113,14 +113,10 @@ message *string_to_message(char *header)
 			break;
 		}
 
-		case message_err: {
-			// TODO: gestier l'erore anche se non capiterà
-			// mandare un errore invece di stampare
-			printf("ERR string_to_message");
-		break;
+		case message_err:
+		default: {
+			break;
 		}
-
-		// TODO: default?
 	}
 	return m;
 
@@ -141,29 +137,33 @@ char *message_to_string(message *m)
 			int dim = strlen(ops[m->OP]) + strlen(m->name) + 4;
 			buff = (char *)calloc(dim, sizeof(char));
 			snprintf(buff, dim, "%s %s \n", ops[m->OP], m->name);
-			buff[dim] = '\0';
+			//buff[dim] = '\0';
 			break;
 		}
 		// store-->OP name len \n data
 		case message_store: {
-			char *string = (char *)calloc(1024, sizeof(char));
+			// 5 = 4 spazi e \n
+			int len_digits = 2;
+			// TODO: controllare come calcolare digits e se funziona
+			int dim = strlen(ops[m->OP]) + strlen(m->name) + len_digits + 5;
 
-			sprintf(string,"%s %s %d \n ", ops[m->OP], m->name, m->len);
-			int header_len = strlen(string) + 1;
-			printf("header_len %d\n", header_len);
+			buff = (char *)calloc(dim + m->len, sizeof(char));
+			snprintf(buff, dim, "%s %s %d \n ", ops[m->OP], m->name, m->len);
+			memcpy(buff + dim, m->data, m->len);
 
-			char *header = (char *)calloc(header_len + m->len, sizeof(char));
-			memcpy(header, string, header_len);
-
-			memcpy(header + header_len, m->data, m->len);
-			buff = header;
-			free(string);
 			break;
 		}
 
 		// data-->OP len \n data
 		case message_data: {
-			//
+			// 5 = 4 spazi e \n
+			int len_digits = 2;
+			// TODO: controllare come calcolare digits e se funziona
+			int dim = strlen(ops[m->OP]) + len_digits + 5;
+
+			buff = (char *)calloc(dim + m->len, sizeof(char));
+			snprintf(buff, dim, "%s %d \n ", ops[m->OP], m->len);
+			memcpy(buff + dim, m->data, m->len);
 			break;
 		}
 		// leave, ok-->OP \n
@@ -184,13 +184,10 @@ char *message_to_string(message *m)
 			// TODO: controllare l'ultima riga
 			break;
 		}
-		case message_err: {
-			// TODO: ??
-			printf("ERR message_to_string");
+		case message_err:
+		default: {
 			break;
 		}
-
-		// TODO: default?
 	}
 	m->buff = buff;
 
