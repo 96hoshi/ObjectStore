@@ -20,13 +20,86 @@
 // La stampa del rapporto sarà affidata a stats.h
 // Terminati i test il client deve disconnetersi.
 
-#include "protocol.h"
-#include "stats.h"
+// #include <stdio.h>
+// #include <stdlib.h>
+// #include <string.h>
+// #include <errno.h>
+// #include <unistd.h>
+// #include <sys/types.h>
+// #include <sys/socket.h>
+// #include <sys/un.h>
+// #include "stats.h"
+
+// int main(int argc, char *argv[])
+// {
+// 	if (argc < 3) {
+// 		fprintf(stderr, "Not enough input");
+// 		exit(EXIT_FAILURE);
+// 	}
+
+// 	argc--;
+// 	argv++;
+
+// 	int test = strtol(argv[1], NULL, 10);
+
+// 	int err = os_connect(argv[0]);
+
+// 	// switch (test) {
+// 	// 	case 1 : 
+// 	// 		// Memorizzazione
+// 	// 		break;
+// 	// 	case 2 :
+// 	// 		// Lettura
+// 	// 		break;
+// 	// 	case 3 :
+// 	// 		// Cancellazione
+// 	// 		break;
+// 	// 	// TODO: gestire da 4 in poi con errore
+// 	// }
+
+// 	//err = os_disconnect()
+
+// 	return 0;
+// }
+
+
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+
+//#define N 1024
+#define MAX_BUFF 1024
+#define UNIX_PATH_MAX 108
+#define SOCKNAME "./objstore.sock"
 
 int main(int argc, char *argv[])
 {
+	int fd_skt;
+	//char buf[N];
+	struct sockaddr_un sa;
+
+	strncpy(sa.sun_path, SOCKNAME, sizeof(sa.sun_path));
+	sa.sun_family = AF_UNIX;
+
+	fd_skt = socket(AF_UNIX, SOCK_STREAM, 0);
+
+	while (connect(fd_skt, (struct sockaddr*)&sa, sizeof(sa)) == -1) {
+		if (errno == ENOENT)
+			sleep(1); //sock non esiste
+		else exit(EXIT_FAILURE);
+	}
+
+	write(fd_skt, "REGISTER ciao\n", 15);
+	//read(fd_skt, buf, N);
+	//printf("Client got: %s\n", buf);
+
+	close(fd_skt);
+	exit(EXIT_SUCCESS);
 
 	return 0;
 }
