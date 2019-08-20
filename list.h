@@ -8,7 +8,6 @@ typedef enum {
 	list_success = 0,
 	list_null = -10,
 	list_not_found,
-	list_duplicate,
 	list_err_mux
 } list_result;
 
@@ -48,7 +47,6 @@ list *list_create(fun_info_compare info_compare,
 // - Copio la variabile info nella struttura
 // - Come campo next pongo il valore di l->head
 // - Cambio il valore di head con il puntatore alla struttura appena creata
-// NB: La lista deve ammettere solo elementi diversi!
 list_result list_insert_unsafe(list *l, void *info);
 
 void *list_search_info_unsafe(list *l, void *info);

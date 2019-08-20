@@ -24,7 +24,6 @@ list *list_create(fun_info_compare info_compare,
 list_result list_insert_unsafe(list *l, void *info)
 {
 	if (l == NULL || info == NULL) return list_null;
-	if (list_search_info_unsafe(l, info) != NULL) return list_duplicate;
 
 	node *n = (node *)calloc(1, sizeof(node));
 	n->info = info;
