@@ -20,7 +20,8 @@ typedef struct {
 	message_OP OP;	// enum per il tipo di operazione
 	char *name;		// puntatore al name
 	int len;		// strtol(puntatore a len)
-	void *data;		// dati
+	char *data;		// TODO: controlla se posso salvare i dati direttamente
+					// 		 con un void *
 } message;
 
 // Tipi di messaggi

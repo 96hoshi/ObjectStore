@@ -57,15 +57,14 @@ message *message_create(message_OP OP, char *name, int len, void *data)
 	m->OP = OP;
 	m->name = name;
 	m->len = len;
-	m->data = data;
+	m->data = (char *)data;
 
 	return m;
-
 }
 
 message *string_to_message(char *header)
 {
-	char *save;
+	char *save = NULL;
 	char *token_op = strtok_r(header, " \n", &save);
 
 	message *m = (message *)calloc(1, sizeof(message));
@@ -73,31 +72,34 @@ message *string_to_message(char *header)
 	m->buff = header;
 	m->OP = check_op(token_op);
 
+	// TODO: dichiarare delle var di appoggio che prenderanno il valore 
+	// 		 delle variabili della struttura nei case
+	// TODO: non dichiarare var nei case e togliere le graffe {}
 	switch(m->OP) {
 		// register, retrieve, delete -->OP nome \n
 		case message_register:
 		case message_retrieve:
 		case message_delete: {
-			m->name = strtok_r(save, " ", &save);
+			m->name = strtok_r(NULL, " ", &save);
 			if (save[0] != '\n') {
-				;//TODO: errore header non corretto
+				printf("ERR header\n");//TODO: errore header non corretto
 			}
 			
 			break;
 		}
 		// store-->OP name len \n data
 		case message_store: {
-			m->name = strtok_r(save, " ", &save);
-			char *string_len = strtok_r(save, "\n", &save);
+			m->name = strtok_r(NULL, " ", &save);
+			char *string_len = strtok_r(NULL, "\n", &save);
 			m->len = strtol(string_len, NULL, 10);
-			m->data = (void *)(save + 1);
+			m->data = (save + 1);
 			break;
 		}
 		// data-->OP len \n data
 		case message_data: {
-			char *string_len = strtok_r(save, "\n", &save);
+			char *string_len = strtok_r(NULL, "\n", &save);
 			m->len = strtol(string_len, NULL, 10);
-			m->data = (void *)(save + 1);
+			m->data = (save + 1);
 			break;
 		}
 		// leave, ok-->OP \n
@@ -109,7 +111,7 @@ message *string_to_message(char *header)
 			break;
 		// ko-->OP message \n
 		case message_ko: {
-			m->data = (void *)strtok_r(save, "\n", &save);
+			m->data = strtok_r(NULL, "\n", &save);
 			break;
 		}
 
@@ -126,8 +128,12 @@ message *string_to_message(char *header)
 // contenuti in msg
 char *message_to_string(message *m)
 {
-	char *buff;
-	
+	char *buff = NULL;
+	// TODO: dichiarare delle var di appoggio che prenderanno il valore 
+	// 		 delle variabili della struttura nei case
+	// TODO: non dichiarare var nei case e togliere le graffe {}
+	// TODO: costruire la size dell'header in modo chiaro!
+	// TODO: fare il controllo della calloc e gestirla
 	switch (m->OP) {
 		// register, retrieve, delete-->OP nome \n
 		case message_register:
@@ -142,21 +148,18 @@ char *message_to_string(message *m)
 		}
 		// store-->OP name len \n data
 		case message_store: {
-			// 5 = 4 spazi e \n
-			int len_digits = 2;
 			// TODO: controllare come calcolare digits e se funziona
+			int len_digits = 2;
+			// 5 = 4 spazi, \n 
 			int dim = strlen(ops[m->OP]) + strlen(m->name) + len_digits + 5;
-
 			buff = (char *)calloc(dim + m->len, sizeof(char));
 			snprintf(buff, dim, "%s %s %d \n ", ops[m->OP], m->name, m->len);
 			memcpy(buff + dim, m->data, m->len);
-
 			break;
 		}
-
 		// data-->OP len \n data
 		case message_data: {
-			// 5 = 4 spazi e \n
+			// 5 = 3 spazi, \n e '\0'
 			int len_digits = 2;
 			// TODO: controllare come calcolare digits e se funziona
 			int dim = strlen(ops[m->OP]) + len_digits + 5;
@@ -176,12 +179,13 @@ char *message_to_string(message *m)
 			break;
 		}
 		// ko-->OP message \n
+		// TODO: deve riuscire sempre: non allocare memoria nello heap!
+		// 		 usare un array statico
 		case message_ko: {
-			//
-			int dim = strlen(ops[m->OP]) + strlen(m->data) + 3;
+			// 3 = 2 spazi, '\n' e '\0'
+			int dim = strlen(ops[m->OP]) + strlen(m->data) + 4;
 			buff = (char *)calloc(dim, sizeof(char));
-			snprintf(buff, dim, "%s %s \n", ops[m->OP], (char *)m->data);
-			// TODO: controllare l'ultima riga
+			snprintf(buff, dim, "%s %s \n", ops[m->OP], m->data);
 			break;
 		}
 		case message_err:
@@ -195,6 +199,7 @@ char *message_to_string(message *m)
 
 }
 
+// TODO: destroy con doppio puntatore?
 void message_destroy(message *m)
 {
 	free(m->buff);
