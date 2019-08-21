@@ -61,14 +61,12 @@ void test_list()
 		}
 		free(str);
 	}
-
 	user *duplicate_u = user_create("a", -1);
 	user *wrong_u = user_create("w", -1);
 
 	// Search_field tests
 	user *u = (user *)list_search_field_unsafe(user_list, duplicate_u->name);
 	if (u == NULL) test++;
-
 	u = (user *)list_search_field_unsafe(user_list, wrong_u->name);
 	if (u != NULL) test++;
 
@@ -76,7 +74,6 @@ void test_list()
 	// Search_info tests
 	u = (user *)list_search_info_unsafe(user_list, wrong_u);
 	if (u != NULL) test++;
-
 	u = (user *)list_search_info_unsafe(user_list, duplicate_u);
 	if (u == NULL) test++;
 
@@ -85,7 +82,6 @@ void test_list()
 	u = (user *)list_search_info_unsafe(user_list, duplicate_u);
 	err = user_compare_name(u, duplicate_u->name);
 	if (err != 0) test++;
-
 	err = user_compare_name(u, wrong_u->name);
 	if (err == 0) test++;
 
@@ -93,10 +89,8 @@ void test_list()
 	// Delete tests
 	err = list_delete_field_unsafe(user_list, duplicate_u->name);
 	if (err != list_success) test++;
-
 	err = list_delete_field_unsafe(user_list, wrong_u->name);
 	if (err != list_not_found) test++;
-
 	err = list_delete_info_unsafe(user_list, wrong_u);
 	if (err != list_not_found) test++;
 
@@ -107,7 +101,6 @@ void test_list()
 	// Destroy tests
 	user_destroy(duplicate_u);
 	user_destroy(wrong_u);
-
 	err = list_destroy(user_list);
 	if (err != list_success) test++;
 
@@ -125,8 +118,7 @@ void test_message()
 {
 	int test = 0;
 
-	char *data = (char *)calloc(strlen("ciao") + 1, sizeof(char));
-	strcpy(data, "ciao");
+	char data[5] = "ciao";
 
 	message *msg = message_create(message_store, "pluto", 5, (void *)data);
 	message_print(msg);
@@ -134,6 +126,13 @@ void test_message()
 	char *prova = message_to_string(msg);
 	printf("MESSAGE_TO_STRING try: %s\n", prova);
 	message_destroy(msg);
+	//free(data);
+
+	message *a = message_create(message_register, "pluto", -1, NULL);
+	char *b = message_to_string(a);
+	printf("MESSAGE_TO_STRING try2: %s\n", b);
+
+	message_destroy(a);
 
 	// char *string = (char *)calloc(strlen("STORE pippo 5 \n aooo") + 1, sizeof(char));
 	// strcpy(string, "STORE pippo 5 \n ao ok");
