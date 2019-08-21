@@ -80,90 +80,100 @@ void set_sigaction()
 	}
 }
 
-// char *read_from_client(int fd_c)
-// {
-// 	int n = 0;
-// 	char *buff = (char*)calloc(MAX_BUFF, sizeof(char));
-// 	if (buff == NULL) {
-// 		perror("ERR calloc\n");
-// 		exit(EXIT_FAILURE);
-// 	}
-
-// 	while ((n = read(fd_c, buff, MAX_BUFF)) != 0) {
-// 		if (n < 0 && errno == EINTR) {
-// 			if (_print_stats == TRUE) {
-// 				stats_server_print();
-// 			continue;
-// 			}
-// 			break;
-// 		}
-// 		if (n == MAX_BUFF) {
-// 			buff = (char*)realloc((char *)buff, 2 * MAX_BUFF);
-// 			if (buff == NULL) {
-// 				perror("ERR realloc\n");
-// 				exit(EXIT_FAILURE);
-// 			}
-// 		}
-// 	}
-
-// 	return buff;
-// }
-
-// void *handle_client(void *arg)
-// {
-// 	int fd_c = (int)arg;
-// 	client_stats c_stats = stats_client_create();
-
-// 	char *buff = read_from_client(fd_c);
-
-// 	// TODO: 
-// 	if (_is_exit == TRUE) {
-// 		;
-// 		//manda risposta ko
-// 		//exit();
-// 	}
-
-// 	//TODO
-// 	//message m = string_to_messag(buff);
-// 	//switch_case per capire l'operazione da fare ed eseguirla
-// 	//manda la risposta
-
-// 	close(fd_c);
-// 	return NULL;
-// }
-
-
-void *test_routine(void *arg)
+char *read_from_client(int fd_c)
 {
 	int fd_c = (int)arg;
 	int n = 0;
+	int max_len = MAX_BUFF;
+	int len = 0;
 	char *buff = (char*)calloc(MAX_BUFF, sizeof(char));
 	if (buff == NULL) {
 		perror("ERR calloc\n");
 		exit(EXIT_FAILURE);
 	}
 
-	while ((n = read(fd_c, buff, MAX_BUFF)) != 0) {
+	while ((n = read(fd_c, buff + len, max_len)) != 0) {
 		if (n < 0 && errno == EINTR) {
-			if (_print_stats == TRUE) {
-				stats_server_print();
-			continue;
+			if (_print_stats == TRUE || _is_exit == TRUE) {
+				continue;
 			}
 			break;
 		}
-		if (n == MAX_BUFF) {
-			buff = (char*)realloc((char *)buff, 2 * MAX_BUFF);
-			if (buff == NULL) {
+		if (n == max_len) {
+			len += n;
+			max_len *= 2;
+			char *newbuff = (char*)realloc((char *)buff, max_len);
+			if (newbuff == NULL) {
 				perror("ERR realloc\n");
 				exit(EXIT_FAILURE);
 			}
+			buff = newbuff;
 		}
 	}
-	printf("SERVER GOTS: %s\n", buff);
 
+	return buff;
+}
+
+void *handle_client(void *arg)
+{
+	int fd_c = (int)arg;
+	client_stats c_stats = stats_client_create();
+
+	char *buff = read_from_client(fd_c);
+
+	// TODO: 
+	if (_is_exit == TRUE) {
+		;
+		//manda risposta ko
+		//exit();
+	}
+
+	//TODO
+	//message m = string_to_messag(buff);
+	//switch_case per capire l'operazione da fare ed eseguirla
+	//manda la risposta
+
+	stats_server_decr_client();
 	close(fd_c);
 	return NULL;
 }
+
+
+// void *test_routine(void *arg)
+// {
+// 	int fd_c = (int)arg;
+// 	int n = 0;
+// 	int max_len = MAX_BUFF;
+// 	int len = 0;
+// 	char *buff = (char*)calloc(MAX_BUFF, sizeof(char));
+// 	if (buff == NULL) {
+// 		perror("ERR calloc\n");
+// 		exit(EXIT_FAILURE);
+// 	}
+
+// 	while ((n = read(fd_c, buff + len, max_len)) != 0) {
+// 		if (n < 0 && errno == EINTR) {
+// 			if (_print_stats == TRUE || _is_exit == TRUE) {
+// 				continue;
+// 			}
+// 			break;
+// 		}
+// 		if (n == max_len) {
+// 			len += n;
+// 			max_len *= 2;
+// 			char *newbuff = (char*)realloc((char *)buff, max_len);
+// 			if (newbuff == NULL) {
+// 				perror("ERR realloc\n");
+// 				exit(EXIT_FAILURE);
+// 			}
+// 			buff = newbuff;
+// 		}
+// 	}
+// 	printf("SERVER GOTS: %s\n", buff);
+
+// 	close(fd_c);
+// 	return NULL;
+// }
 
 int main(int argc, char *argv[])
 {
@@ -187,10 +197,13 @@ int main(int argc, char *argv[])
 
 	while (!_is_exit) {
 		fd_c = accept(fd_skt, NULL, 0);
+		stats_server_incr_client();
 		pthread_t worker;
-		//pthread_create(&worker, NULL, &handle_client, (int *)fd_c);
-		pthread_create(&worker, NULL, &test_routine, (int *)fd_c);
-
+		pthread_create(&worker, NULL, &handle_client, (int *)fd_c);
+		//pthread_create(&worker, NULL, &test_routine, (int *)fd_c);
+		if (_print_stats == TRUE) {
+			stats_server_print();
+		}
 	}
 
 
