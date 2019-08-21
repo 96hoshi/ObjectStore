@@ -8,10 +8,10 @@ OBJS = protocol.o message.o object.o user.o list.o tests
 
 
 client : stats.o libprotocol.a
-	$(CC) $(CFLAGS) $@.c -o $@ $^ -L. $(LIBS)
+ $(CC) $(CFLAGS) $@.c -o $@ $^ -L. $(LIBS)
 
 objStore : stats.o common.h
-	$(CC) $(CFLAGS) $@.c -o $@ $^ -L. -lpthread
+ $(CC) $(CFLAGS) $@.c -o $@ $^ -L. -lpthread
 
 protocol.o : protocol.h message.o
 
@@ -22,27 +22,28 @@ tests : object.o user.o list.o message.o
 %.o : %.c %.h
 
 libprotocol.a : protocol.o message.o stats.o
-	$(AR) rvs $@ $^
+ $(AR) rvs $@ $^
 
 runclient : client
-	./$^
+ ./$^
 
 runserver : objStore
-	./$^
+ ./$^
 
 valgrindclient : client
-	valgrind ./$^
+ valgrind ./$^
 
 valgrindserver : objStore
-	valgrind ./$^
+ valgrind ./$^
 
 
 all : $(TARGET)
 
 clean :
-# 	@echo "Removing garbage"
-	$(RM) $(OBJS) $(TARGET) *~
+#  @echo "Removing garbage"
+ $(RM) $(OBJS) $(TARGET) *~
 
 test : tests
-# 	@echo "Testing ... "
-	valgrind ./$^
+#  @echo "Testing ... "
+ valgrind ./$^
+ 
