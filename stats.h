@@ -45,6 +45,10 @@ client_stats stats_client_create();
 void stats_client_print(client_stats c_stats);
 
 
+//NOTA!
+// chiamare stats_server_incr_client() dopo una connect
+// chiamarestats_server_decr_client() dopo una disconnect!
+
 void stats_server_create();
 
 void stats_server_incr_client();
