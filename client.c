@@ -40,11 +40,12 @@
 // 	argc--;
 // 	argv++;
 
-// 	int test = strtol(argv[1], NULL, 10);
+// client_stats c_stats = stats_client_create();
+// 	int test_case = strtol(argv[1], NULL, 10);
 
 // 	int err = os_connect(argv[0]);
 
-// 	// switch (test) {
+// 	// switch (test_case) {
 // 	// 	case 1 : 
 // 	// 		// Memorizzazione
 // 	// 		break;
