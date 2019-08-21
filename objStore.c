@@ -53,6 +53,8 @@
 
 volatile int _is_exit;
 volatile int _print_stats;
+int _running_threads;
+pthread_mutex_t _running_threads_mux;
 
 void handler(int sig)
 {
@@ -94,7 +96,7 @@ char *read_from_client(int fd_c)
 
 	while ((n = read(fd_c, buff + len, max_len)) != 0) {
 		if (n < 0 && errno == EINTR) {
-			if (_print_stats == TRUE || _is_exit == TRUE) {
+			if (_print_stats == TRUE) {
 				continue;
 			}
 			break;
@@ -105,7 +107,9 @@ char *read_from_client(int fd_c)
 			char *newbuff = (char*)realloc((char *)buff, max_len);
 			if (newbuff == NULL) {
 				perror("ERR realloc\n");
-				exit(EXIT_FAILURE);
+				//manda risposta ko
+				//exit(EXIT_FAILURE); ???
+				//close(fd_c);
 			}
 			buff = newbuff;
 		}
@@ -114,26 +118,27 @@ char *read_from_client(int fd_c)
 	return buff;
 }
 
+// TODO: ogni thread gestisce tutte le richieste del client
+// utilizzare un while finchè non ottiene il comando disconnect
 void *handle_client(void *arg)
 {
 	int fd_c = (int)arg;
-	client_stats c_stats = stats_client_create();
-
 	char *buff = read_from_client(fd_c);
 
 	// TODO: 
 	if (_is_exit == TRUE) {
-		;
+		free(buff);
 		//manda risposta ko
+		// TODO definire la funzione decr_threads() protetta da lock
 		//exit();
 	}
 
-	//TODO
+	//TODO:
 	//message m = string_to_messag(buff);
 	//switch_case per capire l'operazione da fare ed eseguirla
 	//manda la risposta
 
-	stats_server_decr_client();
+	// TODO definire la funzione decr_threads() protetta da lock
 	close(fd_c);
 	return NULL;
 }
@@ -183,10 +188,13 @@ int main(int argc, char *argv[])
 
 	_print_stats = FALSE;
 	_is_exit = FALSE;
+	_running_threads = 1;
+	pthread_mutex_init(&_running_threads, NULL);
 
 	int fd_skt = 0;
 	int fd_c = 0;
 	struct sockaddr_un sa;
+	int err = 0;
 
 	strncpy(sa.sun_path, SOCKNAME, sizeof(sa.sun_path));
 	sa.sun_family = AF_UNIX;
@@ -197,9 +205,13 @@ int main(int argc, char *argv[])
 
 	while (!_is_exit) {
 		fd_c = accept(fd_skt, NULL, 0);
-		stats_server_incr_client();
 		pthread_t worker;
-		pthread_create(&worker, NULL, &handle_client, (int *)fd_c);
+		err = pthread_create(&worker, NULL, &handle_client, (int *)fd_c);
+		if (err != 0) {
+			exit(EXIT_FAILURE)
+		}
+		// TODO definire la funzione incr_threads() protetta da lock
+
 		//pthread_create(&worker, NULL, &test_routine, (int *)fd_c);
 		if (_print_stats == TRUE) {
 			stats_server_print();
