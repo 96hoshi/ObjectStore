@@ -44,15 +44,11 @@
 #include <signal.h>
 #include <errno.h>
 #include "common.h"
-//#include "message.h"
+#include "message.h"
 #include "stats.h"
 
-#define MAX_BUFF 1024
-#define UNIX_PATH_MAX 108
-#define SOCKNAME "./objstore.sock"
-
 volatile int _is_exit;
-volatile int _print_stats;
+
 int _running_threads;
 pthread_mutex_t _running_threads_mux;
 
@@ -82,66 +78,117 @@ void set_sigaction()
 	}
 }
 
-char *read_from_client(int fd_c)
-{
-	int fd_c = (int)arg;
-	int n = 0;
-	int max_len = MAX_BUFF;
-	int len = 0;
-	char *buff = (char*)calloc(MAX_BUFF, sizeof(char));
-	if (buff == NULL) {
-		perror("ERR calloc\n");
-		exit(EXIT_FAILURE);
-	}
-
-	while ((n = read(fd_c, buff + len, max_len)) != 0) {
-		if (n < 0 && errno == EINTR) {
-			if (_print_stats == TRUE) {
-				continue;
-			}
-			break;
-		}
-		if (n == max_len) {
-			len += n;
-			max_len *= 2;
-			char *newbuff = (char*)realloc((char *)buff, max_len);
-			if (newbuff == NULL) {
-				perror("ERR realloc\n");
-				//manda risposta ko
-				//exit(EXIT_FAILURE); ???
-				//close(fd_c);
-			}
-			buff = newbuff;
-		}
-	}
-
-	return buff;
-}
 
 // TODO: ogni thread gestisce tutte le richieste del client
 // utilizzare un while finchè non ottiene il comando disconnect
 void *handle_client(void *arg)
 {
 	int fd_c = (int)arg;
-	char *buff = read_from_client(fd_c);
+	message *m = message_receive(fd_c);
 
-	// TODO: 
 	if (_is_exit == TRUE) {
-		free(buff);
-		//manda risposta ko
-		// TODO definire la funzione decr_threads() protetta da lock
-		//exit();
+		exit(EXIT_FAILURE); // TODO: gestire la chiusura di tutti i thread
 	}
-
-	//TODO:
-	//message m = string_to_messag(buff);
-	//switch_case per capire l'operazione da fare ed eseguirla
-	//manda la risposta
+	message_send(fd_c, m);
 
 	// TODO definire la funzione decr_threads() protetta da lock
 	close(fd_c);
 	return NULL;
 }
+
+
+int main(int argc, char *argv[])
+{
+	unlink(SOCKNAME);
+	stats_server_create();
+	set_sigaction();
+
+	_print_stats = FALSE;
+	_is_exit = FALSE;
+	_running_threads = 1;
+	pthread_mutex_init(&_running_threads_mux, NULL);
+
+	int fd_skt = 0;
+	int fd_c = 0;
+	struct sockaddr_un sa;
+	int err = 0;
+
+	strncpy(sa.sun_path, SOCKNAME, sizeof(sa.sun_path));
+	sa.sun_family = AF_UNIX;
+
+	fd_skt = socket(AF_UNIX, SOCK_STREAM, 0);
+	bind(fd_skt, (struct sockaddr *)&sa, sizeof(sa));
+	listen(fd_skt, SOMAXCONN);
+
+	while (!_is_exit) {
+		fd_c = accept(fd_skt, NULL, 0);
+		pthread_t worker;
+		err = pthread_create(&worker, NULL, &handle_client, (int *)fd_c);
+		if (err != 0) {
+			exit(EXIT_FAILURE);
+		}
+		// TODO definire la funzione incr_threads() protetta da lock
+		if (_print_stats == TRUE) {
+			stats_server_print();
+		}
+	}
+
+
+	//TODO: usare pthread_cond_t
+	// if ) {
+	// 	close(fd_skt);
+	// 	exit(EXIT_SUCCESS);
+	// }
+	pthread_mutex_destroy(&_running_threads_mux);
+	stats_server_destroy();
+	close(fd_skt);
+
+	return 0;
+}
+
+
+
+
+
+
+
+// char *read_from_client(int fd_c)
+// {
+// 	int fd_c = (int)arg;
+// 	ssize_t n = 0;
+// 	int max_len = MAX_BUFF;
+// 	int len = 0;
+// 	char *buff = (char*)calloc(MAX_BUFF, sizeof(char));
+// 	check_calloc(buff, NULL);
+
+
+// 	while ((n = read(fd_c, buff + len, max_len)) != 0) {
+// 		if (n < 0 && errno == EINTR) {
+// 			if (_print_stats == TRUE) {
+// 				continue;
+// 			}
+// 			break;
+// 		}
+// 		if (n == max_len) {
+// 			len += n;
+// 			max_len *= 2;
+// 			char *newbuff = (char*)realloc((char *)buff, max_len);
+// 			if (newbuff == NULL) {
+// 				check_calloc(newbuff, NULL);
+// 				//manda risposta ko
+// 				//close(fd_c);
+// 			}
+// 			buff = newbuff;
+// 		}
+// 	}
+
+// 	return buff;
+// }
+
+
+// Worker di test
+
+//pthread_create(&worker, NULL, &test_routine, (int *)fd_c);
 
 
 // void *test_routine(void *arg)
@@ -174,56 +221,8 @@ void *handle_client(void *arg)
 // 			buff = newbuff;
 // 		}
 // 	}
-// 	printf("SERVER GOTS: %s\n", buff);
+// 	printf("SERVER GOT: %s\n", buff);
 
 // 	close(fd_c);
 // 	return NULL;
 // }
-
-int main(int argc, char *argv[])
-{
-	unlink(SOCKNAME);
-	stats_server_create();
-	set_sigaction();
-
-	_print_stats = FALSE;
-	_is_exit = FALSE;
-	_running_threads = 1;
-	pthread_mutex_init(&_running_threads, NULL);
-
-	int fd_skt = 0;
-	int fd_c = 0;
-	struct sockaddr_un sa;
-	int err = 0;
-
-	strncpy(sa.sun_path, SOCKNAME, sizeof(sa.sun_path));
-	sa.sun_family = AF_UNIX;
-
-	fd_skt = socket(AF_UNIX, SOCK_STREAM, 0);
-	bind(fd_skt, (struct sockaddr *)&sa, sizeof(sa));
-	listen(fd_skt, SOMAXCONN);
-
-	while (!_is_exit) {
-		fd_c = accept(fd_skt, NULL, 0);
-		pthread_t worker;
-		err = pthread_create(&worker, NULL, &handle_client, (int *)fd_c);
-		if (err != 0) {
-			exit(EXIT_FAILURE)
-		}
-		// TODO definire la funzione incr_threads() protetta da lock
-
-		//pthread_create(&worker, NULL, &test_routine, (int *)fd_c);
-		if (_print_stats == TRUE) {
-			stats_server_print();
-		}
-	}
-
-
-	//TODO: usare pthread_cond_t
-	// if ) {
-	// 	close(fd_skt);
-	// 	exit(EXIT_SUCCESS);
-	// }
-
-	return 0;
-}
