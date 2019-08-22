@@ -147,45 +147,6 @@ int main(int argc, char *argv[])
 }
 
 
-
-
-
-
-
-// char *read_from_client(int fd_c)
-// {
-// 	int fd_c = (int)arg;
-// 	ssize_t n = 0;
-// 	int max_len = MAX_BUFF;
-// 	int len = 0;
-// 	char *buff = (char*)calloc(MAX_BUFF, sizeof(char));
-// 	check_calloc(buff, NULL);
-
-
-// 	while ((n = read(fd_c, buff + len, max_len)) != 0) {
-// 		if (n < 0 && errno == EINTR) {
-// 			if (_print_stats == TRUE) {
-// 				continue;
-// 			}
-// 			break;
-// 		}
-// 		if (n == max_len) {
-// 			len += n;
-// 			max_len *= 2;
-// 			char *newbuff = (char*)realloc((char *)buff, max_len);
-// 			if (newbuff == NULL) {
-// 				check_calloc(newbuff, NULL);
-// 				//manda risposta ko
-// 				//close(fd_c);
-// 			}
-// 			buff = newbuff;
-// 		}
-// 	}
-
-// 	return buff;
-// }
-
-
 // Worker di test
 
 //pthread_create(&worker, NULL, &test_routine, (int *)fd_c);
