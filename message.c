@@ -4,7 +4,7 @@
 // a cui può succedere un blocco di dati.
 
 // Cosa posso trovare nei messaggi:
-// 	OP 	= array di caratteri che indica l'operazione da eseguire
+// 	 	= array di caratteri che indica l'operazione da eseguire
 // 	name 	= array di caratteri che contiene il nome del client o del dato
 // 	len 	= lunghezza in byte del dato, codificato in ASCII
 // 	data 	= blocco binario i lunghezza len, posto dopo lo "\n"
@@ -12,7 +12,7 @@
 
 // Struttura dati:
 // -msg:
-// 	-int OP
+// 	-int 
 // 	-char* name
 // 	-int len
 // 	-void* data (che conterrà anche message in caso)
@@ -22,12 +22,19 @@
 #include "message.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include <string.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <errno.h>
+#include "stats.h"
+#include "common.h"
+
 
 // Creare un array di tringhe static (locale al modulo)
 // per tenere traccia delle operazioni dei messaggi:
 // A ogni indice dell'array corrisponde l'operazione dell'enum nell'header
-// ops[msg->message_OP] per lo switch case
+// ops[msg->message_] per lo switch case
 static char* ops[] = {
 	"REGISTER",
 	"STORE",
@@ -40,21 +47,67 @@ static char* ops[] = {
 	"ERR"
 };
 
-message_OP check_op(char *string)
+static void write_buffer(int sock, char *buffer, size_t len) {
+	ssize_t n = 0;
+	ssize_t written = 0;
+	while ((n = write(sock, buffer + written, len - written)) != 0) {
+		if (n < 0 && errno == EINTR) {
+			if (_print_stats == TRUE) {
+				continue;
+			}
+			break;
+		}
+		written += n;
+	}
+}
+
+static char *read_buffer(int sock)
 {
-	for(message_OP i = message_register; i <= message_ko; ++i) {
-		if (strcmp(ops[i], string) == 0) {
+	ssize_t n = 0;
+	int max_len = MAX_BUFF;
+	int len = 0;
+	char *buff = (char*)calloc(MAX_BUFF, sizeof(char));
+	check_calloc(buff, NULL);
+
+	while ((n = read(sock, buff + len, max_len)) != 0) {
+		if (n < 0 && errno == EINTR) {
+			if (_print_stats == TRUE) {
+				continue;
+			}
+			break;
+		}
+		if (n == max_len) {
+			len += n;
+			max_len *= 2;
+			char *newbuff = (char*)realloc(buff, max_len);
+			check_calloc(newbuff, NULL);
+			buff = newbuff;
+		}
+	}
+
+	return buff;
+}
+
+static message_ getOp(char *op_str)
+{
+	for(message_ i = message_register; i <= message_ko; ++i) {
+		if (strcmp(ops[i], op_str) == 0) {
 			return i;
 		}
 	}
 	return message_err;
 }
 
-message *message_create(message_OP OP, char *name, int len, void *data)
+message *message_create(char *buff,
+						message_ ,
+						char *name,
+						int len,
+						void *data)
 {
 	message *m = (message *)calloc(1, sizeof(message));
-	m->buff = NULL;
-	m->OP = OP;
+	check_calloc(m, NULL);
+	m->buff = buff;
+	m-> = ;
 	m->name = name;
 	m->len = len;
 	m->data = (char *)data;
@@ -62,141 +115,150 @@ message *message_create(message_OP OP, char *name, int len, void *data)
 	return m;
 }
 
-message *string_to_message(char *header)
+
+message *message_receive(int sock)
 {
+	char *header = read_buffer(sock);
+
+	message_ op = message_err;
+	char *name = NULL;
+	int len = -1;
+	char *data = NULL;
+	char *string_len = NULL;
+
 	char *save = NULL;
-	char *token_op = strtok_r(header, " \n", &save);
+	char *op_str = strtok_r(header, " \n", &save);
+	op = getOp(op_str);
 
-	message *m = (message *)calloc(1, sizeof(message));
 
-	m->buff = header;
-	m->OP = check_op(token_op);
+	switch(op) {
 
-	// TODO: dichiarare delle var di appoggio che prenderanno il valore 
-	// 		 delle variabili della struttura nei case
-	// TODO: non dichiarare var nei case e togliere le graffe {}
-	switch(m->OP) {
-		// register, retrieve, delete -->OP nome \n
-		case message_register:
-		case message_retrieve:
-		case message_delete: {
-			m->name = strtok_r(NULL, " ", &save);
+		case message_register:			// "REGISTER nome \n"
+		case message_retrieve:			// "RETRIEVE nome \n"
+		case message_delete:			// "DELETE nome \n"
+			name = strtok_r(NULL, " ", &save);
 			if (save[0] != '\n') {
-				printf("ERR header\n");//TODO: errore header non corretto
-			}
-			
-			break;
-		}
-		// store-->OP name len \n data
-		case message_store: {
-			m->name = strtok_r(NULL, " ", &save);
-			char *string_len = strtok_r(NULL, "\n", &save);
-			m->len = strtol(string_len, NULL, 10);
-			m->data = (save + 1);
-			break;
-		}
-		// data-->OP len \n data
-		case message_data: {
-			char *string_len = strtok_r(NULL, "\n", &save);
-			m->len = strtol(string_len, NULL, 10);
-			m->data = (save + 1);
-			break;
-		}
-		// leave, ok-->OP \n
-		case message_leave:
-		case message_ok:
-			if (save[0] != '\n') {
-				;//TODO: errore header non corretto
+				invalid_operation(NULL);
 			}
 			break;
-		// ko-->OP message \n
-		case message_ko: {
-			m->data = strtok_r(NULL, "\n", &save);
+
+		case message_store:				// "STORE name len \n data"
+			name = strtok_r(NULL, " ", &save);
+			string_len = strtok_r(NULL, "\n", &save);
+			len = strtol(string_len, NULL, 10);
+			data = save + 1;
 			break;
-		}
+
+		case message_data:				// "DATA len \n data"
+			string_len = strtok_r(NULL, "\n", &save);
+			len = strtol(string_len, NULL, 10);
+			data = save + 1;
+			break;
+
+		case message_leave:				// "LEAVE \n"
+		case message_ok:				// "OK \n"
+			if (save[0] != '\n') {
+				invalid_operation(NULL);
+			}
+			break;
+
+		case message_ko:				// "KO message \n"
+			data = strtok_r(NULL, "\n", &save);
+			break;
 
 		case message_err:
-		default: {
+		default:
+			invalid_operation(NULL);
 			break;
-		}
 	}
-	return m;
+	message *m = message_create(header, op, name, len, (void *)data);
 
+	return m;
 }
 
-// Crea, in base all'operazione, una stringa con i valori
-// contenuti in msg
-char *message_to_string(message *m)
+// Crea, in base all'operazione, una stringa con i valori contenuti in m
+void message_send(int sock, message *m)
 {
 	char *buff = NULL;
-	// TODO: dichiarare delle var di appoggio che prenderanno il valore 
-	// 		 delle variabili della struttura nei case
-	// TODO: non dichiarare var nei case e togliere le graffe {}
-	// TODO: costruire la size dell'header in modo chiaro!
-	// TODO: fare il controllo della calloc e gestirla
-	switch (m->OP) {
-		// register, retrieve, delete-->OP nome \n
-		case message_register:
-		case message_retrieve:
-		case message_delete: {
-			// 4 = 2 spazi, '\n' e '\0'
-			int dim = strlen(ops[m->OP]) + strlen(m->name) + 4;
-			buff = (char *)calloc(dim, sizeof(char));
-			snprintf(buff, dim, "%s %s \n", ops[m->OP], m->name);
-			//buff[dim] = '\0';
-			break;
-		}
-		// store-->OP name len \n data
-		case message_store: {
-			// TODO: controllare come calcolare digits e se funziona
-			int len_digits = 2;
-			// 5 = 4 spazi, \n 
-			int dim = strlen(ops[m->OP]) + strlen(m->name) + len_digits + 5;
-			buff = (char *)calloc(dim + m->len, sizeof(char));
-			snprintf(buff, dim, "%s %s %d \n ", ops[m->OP], m->name, m->len);
-			memcpy(buff + dim, m->data, m->len);
-			break;
-		}
-		// data-->OP len \n data
-		case message_data: {
-			// 5 = 3 spazi, \n e '\0'
-			int len_digits = 2;
-			// TODO: controllare come calcolare digits e se funziona
-			int dim = strlen(ops[m->OP]) + len_digits + 5;
+	message_ op = m->;
+	char *name = m->name;
+	int len = m->len;
+	char *data = m->data;
 
-			buff = (char *)calloc(dim + m->len, sizeof(char));
-			snprintf(buff, dim, "%s %d \n ", ops[m->OP], m->len);
-			memcpy(buff + dim, m->data, m->len);
+	int size = 0;
+	int len_op = 0;
+	int len_name = 0;
+	int len_digits = 0;
+	int offset = 0;
+
+	switch (op) {
+
+		case message_register:			// "REGISTER nome \n"
+		case message_retrieve:			// "RETRIEVE nome \n"
+		case message_delete:			// "DELETE nome \n"
+			len_op = strlen(ops[op]);
+			len_name = strlen(name);
+			size =  len_op + 1 + len_name + 1 + 1;
+
+			buff = (char *)calloc(size, sizeof(char));
+			check_calloc(buff, NULL);
+			sprintf(buff, "%s %s \n", ops[op], name);
 			break;
-		}
-		// leave, ok-->OP \n
-		case message_leave:
-		case message_ok: {
-			// 3 = uno spazio, '\n' e '\0'
-			int dim = strlen(ops[m->OP]) + 3;
-			buff = (char *)calloc(dim, sizeof(char));
-			snprintf(buff, dim, "%s \n", ops[m->OP]);
+
+		case message_store:				// "STORE name len \n data"
+			if (len < 0)	invalid_operation(NULL);
+			if (len == 0)	len_digits = 1;
+			if (len > 0)	len_digits = (int)(log10(len) + 1);
+			len_op = strlen(ops[op]);
+			len_name = strlen(name); 
+			size = len_op + 1 + len_name + 1 + len_digits + 3;
+
+			buff = (char *)calloc(size + len, sizeof(char));
+			check_calloc(buff, NULL);
+			offset = sprintf(buff, "%s %s %d \n ", ops[op], name, len);
+			memcpy(buff + offset, data, len);
 			break;
-		}
-		// ko-->OP message \n
-		// TODO: deve riuscire sempre: non allocare memoria nello heap!
-		// 		 usare un array statico
-		case message_ko: {
-			// 3 = 2 spazi, '\n' e '\0'
-			int dim = strlen(ops[m->OP]) + strlen(m->data) + 4;
-			buff = (char *)calloc(dim, sizeof(char));
-			snprintf(buff, dim, "%s %s \n", ops[m->OP], m->data);
+
+		case message_data:				// "DATA len \n data"
+			if (len < 0)	invalid_operation(NULL);
+			if (len == 0)	len_digits = 1;
+			if (len > 0)	len_digits = (int)(log10(len) + 1);
+			len_op = strlen(ops[op]);
+			size = len_op + 1 + len_digits + 3;
+
+			buff = (char *)calloc(size + len, sizeof(char));
+			check_calloc(buff, NULL);
+			offset = sprintf(buff, "%s %d \n ", ops[op], len);
+			memcpy(buff + offset, data, len);
 			break;
-		}
+
+		case message_leave:				// "LEAVE \n"
+		case message_ok:				// "OK \n"
+			len_op = strlen(ops[op]);
+			size = len_op + 2;
+
+			buff = (char *)calloc(size, sizeof(char));
+			check_calloc(buff, NULL);
+			sprintf(buff, "%s \n", ops[op]);
+			break;
+
+		case message_ko:				// "KO message \n"
+			len_op = strlen(ops[op]);
+			size = len_op + 1 + len + 2;
+
+			buff = (char *)calloc(size, sizeof(char));
+			check_calloc(buff, NULL);
+			sprintf(buff, "%s %s \n", ops[op], data);
+			break;
+
 		case message_err:
-		default: {
+		default:
+			invalid_operation(NULL);
 			break;
-		}
 	}
 	m->buff = buff;
 
-	return buff;
-
+	write_buffer(sock, buff, len);
 }
 
 // TODO: destroy con doppio puntatore?

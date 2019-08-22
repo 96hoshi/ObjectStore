@@ -17,7 +17,7 @@ typedef enum {
 
 typedef struct {
 	char *buff;		// puntatore al buffer su cui fare la free
-	message_OP OP;	// enum per il tipo di operazione
+	message_op op;	// enum per il tipo di operazione
 	char *name;		// puntatore al name
 	int len;		// strtol(puntatore a len)
 	char *data;		// TODO: controlla se posso salvare i dati direttamente
@@ -40,22 +40,26 @@ typedef struct {
 // copia puntatore a name
 // copia len
 // copia il riferimento a data
-message *message_create(message_OP OP, char *name, int len, void *data);
+message *message_create(char *buff,
+						message_op op,
+						char *name,
+						int len,
+						void *data);
 
-// Tokenizza la stringa per creare un messaggio
+// Tokenizza la stringa letta da sock per creare un messaggio
 // Al primo token (l'operazione) confronta con le possibili op da eseguire
 // se OP == register, retrieve o delete dovrò inserire solo il nome
 // se OP == ko mi serve solo message che salverò in data
 // se OP == store mi servono i campi name, len e data
 // se OP == data mi servono len e data
 // se OP == leave o ok non mi serve altro
-message *string_to_message(char *header);
+message *message_receive(int sock);
 
 
 // Crea, in base all'operazione, una stringa con i valori
 // contenuti in msg
-// utilizzerò il reverse delle funzioni usate da string_to_message
-char* message_to_string(message *m);
+// e poi la manda alla sock con una write
+void message_send(int sock, message *m);
 
 // Libera la memoria per
 // name
