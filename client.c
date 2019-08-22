@@ -20,50 +20,6 @@
 // La stampa del rapporto sarà affidata a stats.h
 // Terminati i test il client deve disconnetersi.
 
-// #include <stdio.h>
-// #include <stdlib.h>
-// #include <string.h>
-// #include <errno.h>
-// #include <unistd.h>
-// #include <sys/types.h>
-// #include <sys/socket.h>
-// #include <sys/un.h>
-// #include "stats.h"
-
-// int main(int argc, char *argv[])
-// {
-// 	if (argc < 3) {
-// 		fprintf(stderr, "Not enough input");
-// 		exit(EXIT_FAILURE);
-// 	}
-
-// 	argc--;
-// 	argv++;
-
-// client_stats c_stats = stats_client_create();
-// 	int test_case = strtol(argv[1], NULL, 10);
-
-// 	int err = os_connect(argv[0]);
-
-// 	// switch (test_case) {
-// 	// 	case 1 : 
-// 	// 		// Memorizzazione
-// 	// 		break;
-// 	// 	case 2 :
-// 	// 		// Lettura
-// 	// 		break;
-// 	// 	case 3 :
-// 	// 		// Cancellazione
-// 	// 		break;
-// 	// 	// TODO: gestire da 4 in poi con errore
-// 	// }
-
-// 	//err = os_disconnect()
-
-// 	return 0;
-// }
-
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -72,16 +28,25 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include "common.h"
 
-//#define N 1024
-#define MAX_BUFF 1024
-#define UNIX_PATH_MAX 108
-#define SOCKNAME "./objstore.sock"
+#define N 1024
 
 int main(int argc, char *argv[])
 {
+	// if (argc < 3) {
+	// 	fprintf(stderr, "Not enough input");
+	// 	exit(EXIT_FAILURE);
+	// }
+
+	// argc--;
+	// argv++;
+
+	//char *name = argv[0];
+	//char *test_str = argv[1];
+
 	int fd_skt;
-	//char buf[N];
+	char buf[N];
 	struct sockaddr_un sa;
 
 	strncpy(sa.sun_path, SOCKNAME, sizeof(sa.sun_path));
@@ -91,13 +56,35 @@ int main(int argc, char *argv[])
 
 	while (connect(fd_skt, (struct sockaddr*)&sa, sizeof(sa)) == -1) {
 		if (errno == ENOENT)
-			sleep(1); //sock non esiste
+			sleep(1);	//sock non esiste
 		else exit(EXIT_FAILURE);
 	}
 
-	write(fd_skt, "REGISTER ciao\n", 15);
-	//read(fd_skt, buf, N);
-	//printf("Client got: %s\n", buf);
+	write(fd_skt, "REGISTER Marta \n", 15);
+	read(fd_skt, buf, N);
+	printf("Client got: %s\n", buf);
+
+
+	// int result = TRUE;
+	// int test_case = strtol(test_str, NULL, 10);
+
+	// result = os_connect(name);
+
+	// switch (test_case) {
+	// 	case 1 : 
+	// 		// Memorizzazione
+	// 		break;
+	// 	case 2 :
+	// 		// Lettura
+	// 		break;
+	// 	case 3 :
+	// 		// Cancellazione
+	// 		break;
+	// 	default:
+	// 		break;
+	// }
+
+	//result = os_disconnect()
 
 	close(fd_skt);
 	exit(EXIT_SUCCESS);
