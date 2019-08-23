@@ -3,8 +3,8 @@
 #include <string.h>
 #include "object.h"
 #include "user.h"
-#include "list.h"
-#include "message.h"
+#include "list.h"S
+#include "common.h"
 
 #define OBJS_N 2
 void test_object()
@@ -110,45 +110,14 @@ void message_print(message *m) {
 	printf("m->buff = %s\n", m->buff);
 	printf("m->OP = %d\n", m->OP);
 	printf("m->name = %s\n", m->name);
-	printf("m->len = %d\n", m->len);
-	printf("m->data = %p\n", m->data);
-}
-
-void test_message()
-{
-	int test = 0;
-
-	char data[5] = "ciao";
-
-	message *msg = message_create(message_store, "pluto", 5, (void *)data);
-	message_print(msg);
-
-	char *prova = message_to_string(msg);
-	printf("MESSAGE_TO_STRING try: %s\n", prova);
-	message_destroy(msg);
-	//free(data);
-
-	message *a = message_create(message_register, "pluto", -1, NULL);
-	char *b = message_to_string(a);
-	printf("MESSAGE_TO_STRING try2: %s\n", b);
-
-	message_destroy(a);
-
-	// char *string = (char *)calloc(strlen("STORE pippo 5 \n aooo") + 1, sizeof(char));
-	// strcpy(string, "STORE pippo 5 \n ao ok");
-
-	// message *m = string_to_message(string);
-	// message_print(m);
-	// message_destroy(m);
-
-	printf("MESSAGE TEST %s", test ? "FAILED!\n" : "PASSED!\n");
+	printf("m->len = %zu\n", m->len);
+	printf("m->data = %p %c\n", m->data, m->data[0]);
 }
 
 int main(int argc, char * argv[])
 {
-	// test_object();
-	// test_list();
-	test_message();
+	test_object();
+	test_list();
 
 	return 0;
 }
