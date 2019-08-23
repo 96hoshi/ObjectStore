@@ -51,6 +51,7 @@ int os_delete(char *name);
 
 // creazione del messaggio
 // connessione server
+// chiude la socket
 int os_disconnect();
 
 #endif

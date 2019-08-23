@@ -11,16 +11,24 @@
 #include "protocol.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <errno.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include "message.h"
+#include "common.h"
 
+int _fd_skt;
 
-static int sendAndRecieve(message *sent)
+static int sendAndReceive(message *sent)
 {
 	int result = FALSE;
 	message *received = NULL;
 
-	message_send(_client_skt, sent);
-	received = message_receive(_client_skt);
+	message_send(_fd_skt, sent);
+	received = message_receive(_fd_skt);
 
 	if (received->op == message_ok) {
 		result = TRUE;
@@ -36,9 +44,21 @@ int os_connect(char *name)
 {
 	int result = FALSE;
 	message *sent = NULL;
+	struct sockaddr_un sa;
+	memset(&sa, 0, sizeof(sa));
+
+	strncpy(sa.sun_path, SOCKNAME, sizeof(sa.sun_path));
+	sa.sun_family = AF_UNIX;
+	_fd_skt = socket(AF_UNIX, SOCK_STREAM, 0);
+
+	while (connect(_fd_skt, (struct sockaddr *)&sa, sizeof(sa)) == -1) {
+		if (errno == ENOENT)
+			sleep(1);
+		else exit(EXIT_FAILURE);
+	}
 
 	sent = message_create(message_register, name, 0, NULL);
-	result = sendAndRecieve(sent);
+	result = sendAndReceive(sent);
 
 	return result;
 }
@@ -49,7 +69,7 @@ int os_store(char *name, void *block, size_t len)
 	message *sent = NULL;
 
 	sent = message_create(message_store, name, len, block);
-	result = sendAndRecieve(sent);
+	result = sendAndReceive(sent);
 
 	return result;
 }
@@ -61,8 +81,8 @@ void *os_retrieve(char *name)
 	message *received = NULL;
 
 	sent = message_create(message_retrieve, name, 0, NULL);
-	message_send(_client_skt, sent);
-	received = message_receive(_client_skt);
+	message_send(_fd_skt, sent);
+	received = message_receive(_fd_skt);
 
 	if (received->op == message_data) {
 		data = (void *)received->data;
@@ -80,7 +100,7 @@ int os_delete(char *name)
 	message *sent = NULL;
 
 	sent = message_create(message_delete, name, 0, NULL);
-	result = sendAndRecieve(sent);
+	result = sendAndReceive(sent);
 
 	return result;
 }
@@ -91,7 +111,8 @@ int os_disconnect()
 	message *sent = NULL;
 
 	sent = message_create(message_leave, NULL, 0, NULL);
-	result = sendAndRecieve(sent);
+	result = sendAndReceive(sent);
+	close(_fd_skt);
 
 	return result;
 }
