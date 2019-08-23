@@ -33,84 +33,89 @@
 
 #define N 1024
 
-static void message_print(message *m) {
-	printf("m->buff = %s\n", m->buff);
-	printf("m->op = %d\n", m->op);
-	printf("m->name = %s\n", m->name);
-	printf("m->len = %zu\n", m->len);
-	if (m->data != NULL)
-		printf("m->data = %p %c\n", m->data, m->data[0]);
-}
+int _client_skt;
 
 int main(int argc, char *argv[])
 {
-	// if (argc < 3) {
-	// 	fprintf(stderr, "Not enough input");
-	// 	exit(EXIT_FAILURE);
-	// }
+	if (argc < 3) {
+		fprintf(stderr, "Not enough input");
+		exit(EXIT_FAILURE);
+	}
 
-	// argc--;
-	// argv++;
+	argc--;
+	argv++;
 
-	//char *name = argv[0];
-	//char *test_str = argv[1];
+	char *name = argv[0];
+	char *test_str = argv[1];
 
-	int fd_skt;
-	char buf[N];
+	int test_case = strtol(test_str, NULL, 10);
+	int result = FALSE;
+	size_t len = 0;
+	void *block = NULL;
+	char *data_name = NULL;
+
+
 	struct sockaddr_un sa;
 	memset(&sa, 0, sizeof(sa));
-
 
 	strncpy(sa.sun_path, SOCKNAME, sizeof(sa.sun_path));
 	sa.sun_family = AF_UNIX;
 
-	fd_skt = socket(AF_UNIX, SOCK_STREAM, 0);
+	_client_skt = socket(AF_UNIX, SOCK_STREAM, 0);
 
-	while (connect(fd_skt, (struct sockaddr*)&sa, sizeof(sa)) == -1) {
+	while (connect(_client_skt, (struct sockaddr*)&sa, sizeof(sa)) == -1) {
 		if (errno == ENOENT)
-			sleep(1);	//sock non esiste
+			sleep(1);
 		else exit(EXIT_FAILURE);
 	}
 
-	// message *m = message_create(NULL, message_register, "Marta", 0, NULL); 			done	// REGISTER name \n  
-	//message *m = message_create(NULL, message_store, "DataName", 9, "Some Data"); 	done		// STORE name len \n data
-								//"STORE DataName 9 \n Some Data"
-	message *m = message_create(NULL, message_data, NULL, 9, "Some Data");					// DATA len \n data
-	// message *m = message_create(NULL, message_ko, "Bad String", 0, NULL);			done	// KO message \n
-	// message *m = message_create(NULL, message_leave, NULL, 0, NULL);					done	// LEAVE \n
+	result = os_connect(name);
+	if (result == FALSE) {
+		close(fd_skt);
+		exit(EXIT_FAILURE);
+	}
 
+	switch (test_case) {
 
-	message_send(fd_skt, m);
-	 message *received = message_receive(fd_skt);
+		case 1 :		// Memorizzazione
+			// TODO: choose
+			//		 create 20 data and store one at time
+			// 		 OR create a data before every store
+			result = os_store(name, block, len);
+			if (result == FALSE) {
+				close(fd_skt);
+				exit(EXIT_FAILURE);
+			}
+			break;
 
-	message_print(received);
-	message_destroy(m);
-	message_destroy(received);
+		case 2 :		// Lettura
+			data = os_retrieve(data_name);
+			// TODO: check if data is equal to what is inside data_name 
+			break;
 
+		case 3 :		// Cancellazione
+			result = os_delete(data_name);
+			if (result == FALSE) {
+				close(fd_skt);
+				exit(EXIT_FAILURE);
+			}
+			break;
 
-	// int result = TRUE;
-	// int test_case = strtol(test_str, NULL, 10);
+		default:
+			break;
+	}
 
-	// result = os_connect(name);
-
-	// switch (test_case) {
-	// 	case 1 : 
-	// 		// Memorizzazione
-	// 		break;
-	// 	case 2 :
-	// 		// Lettura
-	// 		break;
-	// 	case 3 :
-	// 		// Cancellazione
-	// 		break;
-	// 	default:
-	// 		break;
-	// }
-
-	//result = os_disconnect()
+	result = os_disconnect();
 
 	close(fd_skt);
 	exit(EXIT_SUCCESS);
 
 	return 0;
 }
+
+	// message *m = message_create(NULL, message_register, "Marta", 0, NULL); 			done	// REGISTER name \n  
+	// message *m = message_create(NULL, message_store, "DataName", 9, "Some Data"); 	done		// STORE name len \n data
+								//"STORE DataName 9 \n Some Data"
+	// message *m = message_create(NULL, message_data, NULL, 9, "Some Data");			done	// DATA len \n data
+	// message *m = message_create(NULL, message_ko, "Bad String", 0, NULL);			done	// KO message \n
+	// message *m = message_create(NULL, message_leave, NULL, 0, NULL);					done	// LEAVE \n
