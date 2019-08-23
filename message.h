@@ -13,15 +13,14 @@ typedef enum {
 	message_ok,
 	message_ko,
 	message_err
-} message_OP;
+} message_op;
 
 typedef struct {
 	char *buff;		// puntatore al buffer su cui fare la free
 	message_op op;	// enum per il tipo di operazione
 	char *name;		// puntatore al name
-	int len;		// strtol(puntatore a len)
-	char *data;		// TODO: controlla se posso salvare i dati direttamente
-					// 		 con un void *
+	size_t len;		// strtol(puntatore a len)
+	char *data;		// data
 } message;
 
 // Tipi di messaggi
@@ -31,7 +30,6 @@ typedef struct {
 // store ----------------------->OP name len \n data
 // data ------------------------>OP len \n data
 // leave, ok ------------------->OP \n
-
 
 // Alloca spazio per una struttura di tipo message
 // Assegna i valori passati ai campi della struttura
@@ -43,7 +41,7 @@ typedef struct {
 message *message_create(char *buff,
 						message_op op,
 						char *name,
-						int len,
+						size_t len,
 						void *data);
 
 // Tokenizza la stringa letta da sock per creare un messaggio

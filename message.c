@@ -14,7 +14,7 @@
 // -msg:
 // 	-int 
 // 	-char* name
-// 	-int len
+// 	-size_t len
 // 	-void* data (che conterrà anche message in caso)
 
 #define _POSIX_C_SOURCE 200112L // per strtok_r in c99
@@ -34,7 +34,7 @@
 // Creare un array di tringhe static (locale al modulo)
 // per tenere traccia delle operazioni dei messaggi:
 // A ogni indice dell'array corrisponde l'operazione dell'enum nell'header
-// ops[msg->message_] per lo switch case
+// ops[msg->message_op] per lo switch case
 static char* ops[] = {
 	"REGISTER",
 	"STORE",
@@ -47,50 +47,9 @@ static char* ops[] = {
 	"ERR"
 };
 
-static void write_buffer(int sock, char *buffer, size_t len) {
-	ssize_t n = 0;
-	ssize_t written = 0;
-	while ((n = write(sock, buffer + written, len - written)) != 0) {
-		if (n < 0 && errno == EINTR) {
-			if (_print_stats == TRUE) {
-				continue;
-			}
-			break;
-		}
-		written += n;
-	}
-}
-
-static char *read_buffer(int sock)
+static message_op getOp(char *op_str)
 {
-	ssize_t n = 0;
-	int max_len = MAX_BUFF;
-	int len = 0;
-	char *buff = (char*)calloc(MAX_BUFF, sizeof(char));
-	check_calloc(buff, NULL);
-
-	while ((n = read(sock, buff + len, max_len)) != 0) {
-		if (n < 0 && errno == EINTR) {
-			if (_print_stats == TRUE) {
-				continue;
-			}
-			break;
-		}
-		if (n == max_len) {
-			len += n;
-			max_len *= 2;
-			char *newbuff = (char*)realloc(buff, max_len);
-			check_calloc(newbuff, NULL);
-			buff = newbuff;
-		}
-	}
-
-	return buff;
-}
-
-static message_ getOp(char *op_str)
-{
-	for(message_ i = message_register; i <= message_ko; ++i) {
+	for(message_op i = message_register; i < message_err; ++i) {
 		if (strcmp(ops[i], op_str) == 0) {
 			return i;
 		}
@@ -98,16 +57,70 @@ static message_ getOp(char *op_str)
 	return message_err;
 }
 
+static int checkDelimiter(const char * buffer, const size_t buffer_size, const char delimiter)
+{
+	size_t i;
+	for (i = 0; (i < (buffer_size - 1)) && (buffer[i] != delimiter); i++);
+	return (buffer[i] == delimiter);
+}
+
+static void my_write(int sock, char *buffer, size_t len) {
+	ssize_t n = 0;
+	ssize_t written = 0;
+	while ((len - written) > 0) {
+		n = write(sock, buffer + written, len - written);
+		if (n < 0 ) {
+			 if (errno == EINTR) {
+				continue;
+			}
+			break; // TODO: handle write error
+		}
+		written += n;
+	}
+}
+
+static int my_read(int sock,
+				   char * buffer,
+				   size_t * buffer_size,
+				   ssize_t * nRead)
+{
+	ssize_t n = 0;
+
+	if (*nRead == *buffer_size) {
+		*buffer_size = *buffer_size * 2;
+		char * buffer_new = realloc(buffer, *buffer_size);
+		if (buffer_new == NULL) {
+			free(buffer);
+			exit(EXIT_FAILURE); //TODO: replace exit with something useful
+		}
+		buffer = buffer_new;
+	}
+
+	n = read(sock, buffer + *nRead, *buffer_size - *nRead);
+
+	if (n == 0) {   // the client closed the connection
+		return FALSE;   // TODO: replace exit with something useful
+	}
+	if (n < 0) {
+		if (errno == EINTR) {   // if the call was canceled by an interrupt
+			return TRUE;
+		}
+		return FALSE;
+	}
+	*nRead += n;
+	return TRUE;
+}
+
 message *message_create(char *buff,
-						message_ ,
+						message_op op,
 						char *name,
-						int len,
+						size_t len,
 						void *data)
 {
 	message *m = (message *)calloc(1, sizeof(message));
 	check_calloc(m, NULL);
 	m->buff = buff;
-	m-> = ;
+	m->op = op;
 	m->name = name;
 	m->len = len;
 	m->data = (char *)data;
@@ -115,55 +128,85 @@ message *message_create(char *buff,
 	return m;
 }
 
-
 message *message_receive(int sock)
 {
-	char *header = read_buffer(sock);
+	size_t buffer_size = MAX_BUFF;
+	char * lasts = NULL;
+	char * buffer = (char *)calloc(buffer_size, sizeof(char));
 
-	message_ op = message_err;
-	char *name = NULL;
-	int len = -1;
-	char *data = NULL;
-	char *string_len = NULL;
+	ssize_t n = 0;
+	ssize_t nRead = 0;
 
-	char *save = NULL;
-	char *op_str = strtok_r(header, " \n", &save);
+	// read from socket until it found '\n' in the buffer.
+	// Note: the buffer may contain more data after '\n'
+	do {
+		n += nRead;
+		my_read(sock, buffer, &buffer_size, &nRead);
+	} while (checkDelimiter(buffer + n, buffer_size, '\n') == 0);
+
+	message_op op = message_err;
+	char * name = NULL;
+	size_t len = 0;
+	char * data = NULL;
+
+	char * len_str = NULL;
+	char * op_str = NULL;
+
+	size_t lastToRead = 0;
+	// 	lastToRead
+	// (lasts - buffer) = the number of bytes already read up to "\n" (not included)
+	// 2 count for the two char "\n " before "data" 
+	// len = number of bytes of "data"
+
+	op_str = strtok_r(buffer, " ", &lasts); // get the op string
 	op = getOp(op_str);
-
 
 	switch(op) {
 
-		case message_register:			// "REGISTER nome \n"
-		case message_retrieve:			// "RETRIEVE nome \n"
-		case message_delete:			// "DELETE nome \n"
-			name = strtok_r(NULL, " ", &save);
-			if (save[0] != '\n') {
-				invalid_operation(NULL);
+		case message_register:		// REGISTER name \n
+		case message_retrieve:		// RETRIEVE name \n
+		case message_delete:		// DELETE name \n
+			name = strtok_r(NULL, " ", &lasts); // get the name
+			break;
+
+		case message_store:			// STORE name len \n data
+			name = strtok_r(NULL, " ", &lasts); // get the name
+			len_str = strtok_r(NULL, " ", &lasts);  // get the len
+			len = strtol(len_str, NULL, 10);
+			data = lasts + 2;
+			lastToRead = (lasts - buffer) + 2 + len;
+
+			while (nRead < lastToRead) {
+				if (my_read(sock, buffer, &buffer_size, &nRead) == TRUE) {
+					continue;
+				} else {
+					free(buffer);
+					exit(EXIT_FAILURE);   // if there is another type of error
+				}
 			}
 			break;
 
-		case message_store:				// "STORE name len \n data"
-			name = strtok_r(NULL, " ", &save);
-			string_len = strtok_r(NULL, "\n", &save);
-			len = strtol(string_len, NULL, 10);
-			data = save + 1;
-			break;
+		case message_data:			// DATA len \n data
+			len_str = strtok_r(NULL, " ", &lasts);  // get the len
+			len = strtol(len_str, NULL, 10);
+			data = lasts + 2;
+			lastToRead = (lasts - buffer) + 2 + len;
 
-		case message_data:				// "DATA len \n data"
-			string_len = strtok_r(NULL, "\n", &save);
-			len = strtol(string_len, NULL, 10);
-			data = save + 1;
-			break;
-
-		case message_leave:				// "LEAVE \n"
-		case message_ok:				// "OK \n"
-			if (save[0] != '\n') {
-				invalid_operation(NULL);
+			while (nRead < lastToRead) {
+				if (my_read(sock, buffer, &buffer_size, &nRead) == TRUE) {
+					continue;
+				} else {
+					exit(EXIT_FAILURE);   // TODO: handle if there is another type of error
+				}
 			}
 			break;
 
-		case message_ko:				// "KO message \n"
-			data = strtok_r(NULL, "\n", &save);
+		case message_leave:			// LEAVE \n
+		case message_ok:			// OK \n
+			break;
+
+		case message_ko:			// KO message \n
+			name = strtok_r(NULL, "\n", &lasts); // get the message
 			break;
 
 		case message_err:
@@ -171,84 +214,94 @@ message *message_receive(int sock)
 			invalid_operation(NULL);
 			break;
 	}
-	message *m = message_create(header, op, name, len, (void *)data);
-
+	message *m = message_create(buffer, op, name, len, data);
 	return m;
+
 }
 
-// Crea, in base all'operazione, una stringa con i valori contenuti in m
 void message_send(int sock, message *m)
 {
 	char *buff = NULL;
-	message_ op = m->;
+	message_op op = m->op;
 	char *name = m->name;
-	int len = m->len;
+	size_t len = m->len;
 	char *data = m->data;
 
-	int size = 0;
-	int len_op = 0;
-	int len_name = 0;
-	int len_digits = 0;
-	int offset = 0;
+	size_t size = 0;
+	size_t len_op = 0;
+	size_t len_name = 0;
+	size_t len_digits = 0;
+	size_t offset = 0;
 
 	switch (op) {
 
-		case message_register:			// "REGISTER nome \n"
-		case message_retrieve:			// "RETRIEVE nome \n"
-		case message_delete:			// "DELETE nome \n"
+		case message_register:		// "REGISTER nome \n"
+		case message_retrieve:		// "RETRIEVE nome \n"
+		case message_delete:		// "DELETE nome \n"
 			len_op = strlen(ops[op]);
 			len_name = strlen(name);
+			//		OP + space + name + space + '\n'
 			size =  len_op + 1 + len_name + 1 + 1;
 
-			buff = (char *)calloc(size, sizeof(char));
+			//size +1 for '\0' puts by sprintf
+			buff = (char *)calloc(size + 1, sizeof(char));
 			check_calloc(buff, NULL);
 			sprintf(buff, "%s %s \n", ops[op], name);
 			break;
 
-		case message_store:				// "STORE name len \n data"
+		case message_store:			// "STORE name len \n data"
 			if (len < 0)	invalid_operation(NULL);
 			if (len == 0)	len_digits = 1;
 			if (len > 0)	len_digits = (int)(log10(len) + 1);
 			len_op = strlen(ops[op]);
 			len_name = strlen(name); 
-			size = len_op + 1 + len_name + 1 + len_digits + 3;
+			//		OP + space + name + space + len + space + '\n' + space + dataSize
+			size = len_op + 1 + len_name + 1 + len_digits + 1 + 1 + 1 + len;
 
-			buff = (char *)calloc(size + len, sizeof(char));
+			//size +1 for '\0' puts by sprintf
+			buff = (char *)calloc(size + 1, sizeof(char));
 			check_calloc(buff, NULL);
-			offset = sprintf(buff, "%s %s %d \n ", ops[op], name, len);
+			offset = sprintf(buff, "%s %s %zu \n ", ops[op], name, len);
 			memcpy(buff + offset, data, len);
 			break;
 
-		case message_data:				// "DATA len \n data"
+		case message_data:			// "DATA len \n data"
 			if (len < 0)	invalid_operation(NULL);
 			if (len == 0)	len_digits = 1;
 			if (len > 0)	len_digits = (int)(log10(len) + 1);
 			len_op = strlen(ops[op]);
-			size = len_op + 1 + len_digits + 3;
+			//		OP + space + len + space + '\n' + space
+			size = len_op + 1 + len_digits + 1 + 1 + 1 + len;
 
-			buff = (char *)calloc(size + len, sizeof(char));
+			//size +1 for '\0' puts by sprintf
+			buff = (char *)calloc(size + 1, sizeof(char));
 			check_calloc(buff, NULL);
-			offset = sprintf(buff, "%s %d \n ", ops[op], len);
+			offset = sprintf(buff, "%s %zu \n ", ops[op], len);
 			memcpy(buff + offset, data, len);
 			break;
 
-		case message_leave:				// "LEAVE \n"
-		case message_ok:				// "OK \n"
+		case message_leave:			// "LEAVE \n"
+		case message_ok:			// "OK \n"
 			len_op = strlen(ops[op]);
-			size = len_op + 2;
+			//		OP + space + '\n'
+			size = len_op + 1 + 1;
 
-			buff = (char *)calloc(size, sizeof(char));
+			//size +1 for '\0' puts by sprintf
+			buff = (char *)calloc(size + 1, sizeof(char));
 			check_calloc(buff, NULL);
 			sprintf(buff, "%s \n", ops[op]);
 			break;
 
-		case message_ko:				// "KO message \n"
+		case message_ko:			// "KO message \n"
 			len_op = strlen(ops[op]);
-			size = len_op + 1 + len + 2;
+			len_name = strlen(name);
+			//		OP + space + message + space + '\n'
+			size = len_op + 1 + len_name + 1 + 1;
 
-			buff = (char *)calloc(size, sizeof(char));
+			//size +1 for '\0' puts by sprintf
+			buff = (char *)calloc(size + 1, sizeof(char));
 			check_calloc(buff, NULL);
-			sprintf(buff, "%s %s \n", ops[op], data);
+			sprintf(buff, "%s %s \n", ops[op], name);
 			break;
 
 		case message_err:
@@ -258,7 +311,7 @@ void message_send(int sock, message *m)
 	}
 	m->buff = buff;
 
-	write_buffer(sock, buff, len);
+	my_write(sock, buff, size);
 }
 
 // TODO: destroy con doppio puntatore?
