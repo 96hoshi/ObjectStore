@@ -23,17 +23,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/un.h>
 #include <common.h>
-#include <message.h>
+#include <protocol.h>
 
 #define N 1024
-
-int _client_skt;
 
 int main(int argc, char *argv[])
 {
@@ -52,26 +45,13 @@ int main(int argc, char *argv[])
 	int result = FALSE;
 	size_t len = 0;
 	void *block = NULL;
+	void *data = NULL;
 	char *data_name = NULL;
 
 
-	struct sockaddr_un sa;
-	memset(&sa, 0, sizeof(sa));
-
-	strncpy(sa.sun_path, SOCKNAME, sizeof(sa.sun_path));
-	sa.sun_family = AF_UNIX;
-
-	_client_skt = socket(AF_UNIX, SOCK_STREAM, 0);
-
-	while (connect(_client_skt, (struct sockaddr*)&sa, sizeof(sa)) == -1) {
-		if (errno == ENOENT)
-			sleep(1);
-		else exit(EXIT_FAILURE);
-	}
-
 	result = os_connect(name);
 	if (result == FALSE) {
-		close(fd_skt);
+		//chiamo la os_disconnect ?
 		exit(EXIT_FAILURE);
 	}
 
@@ -83,7 +63,7 @@ int main(int argc, char *argv[])
 			// 		 OR create a data before every store
 			result = os_store(name, block, len);
 			if (result == FALSE) {
-				close(fd_skt);
+				//chiamo la os_disconnect ?
 				exit(EXIT_FAILURE);
 			}
 			break;
@@ -96,19 +76,17 @@ int main(int argc, char *argv[])
 		case 3 :		// Cancellazione
 			result = os_delete(data_name);
 			if (result == FALSE) {
-				close(fd_skt);
+				//chiamo la os_disconnect ?
 				exit(EXIT_FAILURE);
 			}
 			break;
 
 		default:
+			invalid_operation(NULL);
 			break;
 	}
 
-	result = os_disconnect();
-
-	close(fd_skt);
-	exit(EXIT_SUCCESS);
+	os_disconnect();
 
 	return 0;
 }
