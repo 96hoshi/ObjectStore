@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -I. -std=c99 -Wall -g -pedantic
-LIBS = -lprotocol
+LIBS = -lprotocol -lm
 TARGET = client objStore libprotocol.a
 OBJS = protocol.o message.o object.o user.o list.o stats.o tests
 
