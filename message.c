@@ -4,7 +4,7 @@
 // a cui può succedere un blocco di dati.
 
 // Cosa posso trovare nei messaggi:
-// 	 	= array di caratteri che indica l'operazione da eseguire
+// 	op 	= array di caratteri che indica l'operazione da eseguire
 // 	name 	= array di caratteri che contiene il nome del client o del dato
 // 	len 	= lunghezza in byte del dato, codificato in ASCII
 // 	data 	= blocco binario i lunghezza len, posto dopo lo "\n"
@@ -243,14 +243,13 @@ void message_send(int sock, message *m)
 			//		OP + space + name + space + '\n'
 			size =  len_op + 1 + len_name + 1 + 1;
 
-			//size +1 for '\0' puts by sprintf
+			//size + 1 for '\0' puts by sprintf
 			buff = (char *)calloc(size + 1, sizeof(char));
 			check_calloc(buff, NULL);
 			sprintf(buff, "%s %s \n", ops[op], name);
 			break;
 
 		case message_store:			// "STORE name len \n data"
-			if (len < 0)	invalid_operation(NULL);
 			if (len == 0)	len_digits = 1;
 			if (len > 0)	len_digits = (int)(log10(len) + 1);
 			len_op = strlen(ops[op]);
@@ -258,7 +257,7 @@ void message_send(int sock, message *m)
 			//		OP + space + name + space + len + space + '\n' + space + dataSize
 			size = len_op + 1 + len_name + 1 + len_digits + 1 + 1 + 1 + len;
 
-			//size +1 for '\0' puts by sprintf
+			//size + 1 for '\0' puts by sprintf
 			buff = (char *)calloc(size + 1, sizeof(char));
 			check_calloc(buff, NULL);
 			offset = sprintf(buff, "%s %s %zu \n ", ops[op], name, len);
@@ -266,14 +265,13 @@ void message_send(int sock, message *m)
 			break;
 
 		case message_data:			// "DATA len \n data"
-			if (len < 0)	invalid_operation(NULL);
 			if (len == 0)	len_digits = 1;
 			if (len > 0)	len_digits = (int)(log10(len) + 1);
 			len_op = strlen(ops[op]);
-			//		OP + space + len + space + '\n' + space
+			//		OP + space + len + space + '\n' + space + dataSize
 			size = len_op + 1 + len_digits + 1 + 1 + 1 + len;
 
-			//size +1 for '\0' puts by sprintf
+			//size + 1 for '\0' puts by sprintf
 			buff = (char *)calloc(size + 1, sizeof(char));
 			check_calloc(buff, NULL);
 			offset = sprintf(buff, "%s %zu \n ", ops[op], len);
@@ -286,7 +284,7 @@ void message_send(int sock, message *m)
 			//		OP + space + '\n'
 			size = len_op + 1 + 1;
 
-			//size +1 for '\0' puts by sprintf
+			//size + 1 for '\0' puts by sprintf
 			buff = (char *)calloc(size + 1, sizeof(char));
 			check_calloc(buff, NULL);
 			sprintf(buff, "%s \n", ops[op]);
@@ -298,7 +296,7 @@ void message_send(int sock, message *m)
 			//		OP + space + message + space + '\n'
 			size = len_op + 1 + len_name + 1 + 1;
 
-			//size +1 for '\0' puts by sprintf
+			//size + 1 for '\0' puts by sprintf
 			buff = (char *)calloc(size + 1, sizeof(char));
 			check_calloc(buff, NULL);
 			sprintf(buff, "%s %s \n", ops[op], name);
