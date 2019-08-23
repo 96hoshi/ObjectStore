@@ -111,15 +111,14 @@ static int my_read(int sock,
 	return TRUE;
 }
 
-message *message_create(char *buff,
-						message_op op,
+message *message_create(message_op op,
 						char *name,
 						size_t len,
 						void *data)
 {
 	message *m = (message *)calloc(1, sizeof(message));
 	check_calloc(m, NULL);
-	m->buff = buff;
+	m->buff = NULL;
 	m->op = op;
 	m->name = name;
 	m->len = len;
@@ -214,14 +213,16 @@ message *message_receive(int sock)
 			invalid_operation(NULL);
 			break;
 	}
-	message *m = message_create(buffer, op, name, len, data);
+	message *m = message_create(op, name, len, data);
+	m->buff = buffer;
+
 	return m;
 
 }
 
 void message_send(int sock, message *m)
 {
-	char *buff = NULL;
+	char *buffer = NULL;
 	message_op op = m->op;
 	char *name = m->name;
 	size_t len = m->len;
@@ -244,9 +245,9 @@ void message_send(int sock, message *m)
 			size =  len_op + 1 + len_name + 1 + 1;
 
 			//size + 1 for '\0' puts by sprintf
-			buff = (char *)calloc(size + 1, sizeof(char));
-			check_calloc(buff, NULL);
-			sprintf(buff, "%s %s \n", ops[op], name);
+			buffer = (char *)calloc(size + 1, sizeof(char));
+			check_calloc(buffer, NULL);
+			sprintf(buffer, "%s %s \n", ops[op], name);
 			break;
 
 		case message_store:			// "STORE name len \n data"
@@ -258,10 +259,10 @@ void message_send(int sock, message *m)
 			size = len_op + 1 + len_name + 1 + len_digits + 1 + 1 + 1 + len;
 
 			//size + 1 for '\0' puts by sprintf
-			buff = (char *)calloc(size + 1, sizeof(char));
-			check_calloc(buff, NULL);
-			offset = sprintf(buff, "%s %s %zu \n ", ops[op], name, len);
-			memcpy(buff + offset, data, len);
+			buffer = (char *)calloc(size + 1, sizeof(char));
+			check_calloc(buffer, NULL);
+			offset = sprintf(buffer, "%s %s %zu \n ", ops[op], name, len);
+			memcpy(buffer + offset, data, len);
 			break;
 
 		case message_data:			// "DATA len \n data"
@@ -272,10 +273,10 @@ void message_send(int sock, message *m)
 			size = len_op + 1 + len_digits + 1 + 1 + 1 + len;
 
 			//size + 1 for '\0' puts by sprintf
-			buff = (char *)calloc(size + 1, sizeof(char));
-			check_calloc(buff, NULL);
-			offset = sprintf(buff, "%s %zu \n ", ops[op], len);
-			memcpy(buff + offset, data, len);
+			buffer = (char *)calloc(size + 1, sizeof(char));
+			check_calloc(buffer, NULL);
+			offset = sprintf(buffer, "%s %zu \n ", ops[op], len);
+			memcpy(buffer + offset, data, len);
 			break;
 
 		case message_leave:			// "LEAVE \n"
@@ -285,9 +286,9 @@ void message_send(int sock, message *m)
 			size = len_op + 1 + 1;
 
 			//size + 1 for '\0' puts by sprintf
-			buff = (char *)calloc(size + 1, sizeof(char));
-			check_calloc(buff, NULL);
-			sprintf(buff, "%s \n", ops[op]);
+			buffer = (char *)calloc(size + 1, sizeof(char));
+			check_calloc(buffer, NULL);
+			sprintf(buffer, "%s \n", ops[op]);
 			break;
 
 		case message_ko:			// "KO message \n"
@@ -297,9 +298,9 @@ void message_send(int sock, message *m)
 			size = len_op + 1 + len_name + 1 + 1;
 
 			//size + 1 for '\0' puts by sprintf
-			buff = (char *)calloc(size + 1, sizeof(char));
-			check_calloc(buff, NULL);
-			sprintf(buff, "%s %s \n", ops[op], name);
+			buffer = (char *)calloc(size + 1, sizeof(char));
+			check_calloc(buffer, NULL);
+			sprintf(buffer, "%s %s \n", ops[op], name);
 			break;
 
 		case message_err:
@@ -307,9 +308,9 @@ void message_send(int sock, message *m)
 			invalid_operation(NULL);
 			break;
 	}
-	m->buff = buff;
+	m->buff = buffer;
 
-	my_write(sock, buff, size);
+	my_write(sock, buffer, size);
 }
 
 // TODO: destroy con doppio puntatore?

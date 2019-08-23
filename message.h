@@ -33,13 +33,12 @@ typedef struct {
 
 // Alloca spazio per una struttura di tipo message
 // Assegna i valori passati ai campi della struttura
-// copia il puntatore al buff
+// inizializza buff
 // copia OP
 // copia puntatore a name
 // copia len
 // copia il riferimento a data
-message *message_create(char *buff,
-						message_op op,
+message *message_create(message_op op,
 						char *name,
 						size_t len,
 						void *data);
