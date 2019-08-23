@@ -28,9 +28,19 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include "common.h"
+#include <common.h>
+#include <message.h>
 
 #define N 1024
+
+static void message_print(message *m) {
+	printf("m->buff = %s\n", m->buff);
+	printf("m->op = %d\n", m->op);
+	printf("m->name = %s\n", m->name);
+	printf("m->len = %zu\n", m->len);
+	if (m->data != NULL)
+		printf("m->data = %p %c\n", m->data, m->data[0]);
+}
 
 int main(int argc, char *argv[])
 {
@@ -48,6 +58,8 @@ int main(int argc, char *argv[])
 	int fd_skt;
 	char buf[N];
 	struct sockaddr_un sa;
+	memset(&sa, 0, sizeof(sa));
+
 
 	strncpy(sa.sun_path, SOCKNAME, sizeof(sa.sun_path));
 	sa.sun_family = AF_UNIX;
@@ -60,9 +72,20 @@ int main(int argc, char *argv[])
 		else exit(EXIT_FAILURE);
 	}
 
-	write(fd_skt, "REGISTER Marta \n", 15);
-	read(fd_skt, buf, N);
-	printf("Client got: %s\n", buf);
+	// message *m = message_create(NULL, message_register, "Marta", 0, NULL); 			done	// REGISTER name \n  
+	//message *m = message_create(NULL, message_store, "DataName", 9, "Some Data"); 	done		// STORE name len \n data
+								//"STORE DataName 9 \n Some Data"
+	message *m = message_create(NULL, message_data, NULL, 9, "Some Data");					// DATA len \n data
+	// message *m = message_create(NULL, message_ko, "Bad String", 0, NULL);			done	// KO message \n
+	// message *m = message_create(NULL, message_leave, NULL, 0, NULL);					done	// LEAVE \n
+
+
+	message_send(fd_skt, m);
+	 message *received = message_receive(fd_skt);
+
+	message_print(received);
+	message_destroy(m);
+	message_destroy(received);
 
 
 	// int result = TRUE;
