@@ -47,10 +47,11 @@
 #include "message.h"
 #include "stats.h"
 
-volatile int _is_exit;
+volatile int _is_exit; //TODO: usare volatile sig_atomic_t?
 
 int _running_threads;
 pthread_mutex_t _running_threads_mux;
+
 
 void handler(int sig)
 {
@@ -66,12 +67,17 @@ void handler(int sig)
 void set_sigaction()
 {
 	struct sigaction sa;
+	memset(&sa, 0, sizeof(sa));
+	sigemptyset(&sa.sa_mask);
+	sigaddset(&sa.sa_mask, SIGUSR1);
+	sigaddset(&sa.sa_mask, SIGINT);
 	sa.sa_handler = handler;
 
 	if (sigaction(SIGUSR1, &sa, NULL) == -1) {
 		perror("Signal error SIGUSR1");
 		exit(EXIT_FAILURE);
 	}
+
 	if (sigaction(SIGINT, &sa, NULL) == -1) {
 		perror("Signal error SIGINT");
 		exit(EXIT_FAILURE);
@@ -87,9 +93,13 @@ void *handle_client(void *arg)
 	message *m = message_receive(fd_c);
 
 	if (_is_exit == TRUE) {
+		message_destroy(m);
 		exit(EXIT_FAILURE); // TODO: gestire la chiusura di tutti i thread
 	}
+	// Resend the same message create a buffer-size memory leak
+	// Used only for testing
 	message_send(fd_c, m);
+	message_destroy(m);
 
 	// TODO definire la funzione decr_threads() protetta da lock
 	close(fd_c);
@@ -108,10 +118,12 @@ int main(int argc, char *argv[])
 	_running_threads = 1;
 	pthread_mutex_init(&_running_threads_mux, NULL);
 
+	int err = 0;
 	int fd_skt = 0;
 	int fd_c = 0;
 	struct sockaddr_un sa;
-	int err = 0;
+	memset(&sa, 0, sizeof(sa));
+
 
 	strncpy(sa.sun_path, SOCKNAME, sizeof(sa.sun_path));
 	sa.sun_family = AF_UNIX;
@@ -122,12 +134,17 @@ int main(int argc, char *argv[])
 
 	while (!_is_exit) {
 		fd_c = accept(fd_skt, NULL, 0);
+		if (fd_c == -1) {
+			exit(EXIT_FAILURE); //TODO handle this case
+		}
 		pthread_t worker;
 		err = pthread_create(&worker, NULL, &handle_client, (int *)fd_c);
-		if (err != 0) {
-			exit(EXIT_FAILURE);
-		}
+		// if (err != 0) {
+		// 	exit(EXIT_FAILURE);
+		// }
+		pthread_detach(worker);
 		// TODO definire la funzione incr_threads() protetta da lock
+
 		if (_print_stats == TRUE) {
 			stats_server_print();
 		}
@@ -145,45 +162,3 @@ int main(int argc, char *argv[])
 
 	return 0;
 }
-
-
-// Worker di test
-
-//pthread_create(&worker, NULL, &test_routine, (int *)fd_c);
-
-
-// void *test_routine(void *arg)
-// {
-// 	int fd_c = (int)arg;
-// 	int n = 0;
-// 	int max_len = MAX_BUFF;
-// 	int len = 0;
-// 	char *buff = (char*)calloc(MAX_BUFF, sizeof(char));
-// 	if (buff == NULL) {
-// 		perror("ERR calloc\n");
-// 		exit(EXIT_FAILURE);
-// 	}
-
-// 	while ((n = read(fd_c, buff + len, max_len)) != 0) {
-// 		if (n < 0 && errno == EINTR) {
-// 			if (_print_stats == TRUE || _is_exit == TRUE) {
-// 				continue;
-// 			}
-// 			break;
-// 		}
-// 		if (n == max_len) {
-// 			len += n;
-// 			max_len *= 2;
-// 			char *newbuff = (char*)realloc((char *)buff, max_len);
-// 			if (newbuff == NULL) {
-// 				perror("ERR realloc\n");
-// 				exit(EXIT_FAILURE);
-// 			}
-// 			buff = newbuff;
-// 		}
-// 	}
-// 	printf("SERVER GOT: %s\n", buff);
-
-// 	close(fd_c);
-// 	return NULL;
-// }
