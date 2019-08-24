@@ -49,8 +49,10 @@ list *list_create(fun_info_compare info_compare,
 // - Cambio il valore di head con il puntatore alla struttura appena creata
 list_result list_insert_unsafe(list *l, void *info);
 
+// - Ricerca per info
 void *list_search_info_unsafe(list *l, void *info);
 
+// - Ricerca per uno specifico field
 void *list_search_field_unsafe(list *l, void *field);
 
 // Per ogni elemento di l
@@ -60,10 +62,8 @@ void *list_search_field_unsafe(list *l, void *field);
 //TODO: Se non la uso da nessuna parte togliere il prototipo dall'header
 void *list_search_unsafe(list *l, void *info, fun_info_compare info_compare);
 
-// - Ricerca per info
 list_result list_delete_info_unsafe(list *l, void *info);
 
-// - Ricerca per uno specifico field
 list_result list_delete_field_unsafe(list *l, void *field);
 
 // - Tenendo un puntatore al nodo precedente (inizialmente NULL)

@@ -116,7 +116,7 @@ list_result list_delete_unsafe(list *l, void *info, fun_info_compare info_compar
 
 list_result list_destroy(list *l)
 {
-	if (l == NULL) return list_null;
+	if (l == NULL) return list_success;
 
 	while (l->head != NULL) {
 		node *to_delete = l->head;
