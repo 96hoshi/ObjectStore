@@ -10,7 +10,7 @@ OBJS = protocol.o message.o object.o user.o list.o stats.o tests
 client : libprotocol.a
 	$(CC) $(CFLAGS) $@.c -o $@ $^ -L. $(LIBS)
 
-objStore : stats.o message.o common.h
+objStore : stats.o message.o list.o user.o object.o common.h
 	$(CC) $(CFLAGS) $@.c -o $@ $^ -lpthread -lm
 
 protocol.o : protocol.h message.o common.h
