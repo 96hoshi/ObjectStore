@@ -57,16 +57,18 @@ static message_op getOp(char *op_str)
 	return message_err;
 }
 
-static int checkDelimiter(const char * buffer, const size_t buffer_size, const char delimiter)
+static int checkDelimiter(char *buffer, size_t buffer_size, char delimiter)
 {
 	size_t i;
+
 	for (i = 0; (i < (buffer_size - 1)) && (buffer[i] != delimiter); i++);
 	return (buffer[i] == delimiter);
 }
 
-static void my_write(int sock, char *buffer, size_t len) {
+static void myWrite(int sock, char *buffer, size_t len) {
 	ssize_t n = 0;
 	ssize_t written = 0;
+
 	while ((len - written) > 0) {
 		n = write(sock, buffer + written, len - written);
 		if (n < 0 ) {
@@ -79,24 +81,23 @@ static void my_write(int sock, char *buffer, size_t len) {
 	}
 }
 
-static int my_read(int sock,
-				   char * buffer,
-				   size_t * buffer_size,
-				   ssize_t * nRead)
+static int myRead(int sock,
+				   char **buffer,
+				   size_t *buffer_size,
+				   ssize_t *nRead)
 {
 	ssize_t n = 0;
 
 	if (*nRead == *buffer_size) {
 		*buffer_size = *buffer_size * 2;
-		char * buffer_new = realloc(buffer, *buffer_size);
-		if (buffer_new == NULL) {
-			free(buffer);
+		*buffer = realloc(*buffer, *buffer_size);
+		if (*buffer == NULL) {
+			free(*buffer);
 			exit(EXIT_FAILURE); //TODO: replace exit with something useful
 		}
-		buffer = buffer_new;
 	}
 
-	n = read(sock, buffer + *nRead, *buffer_size - *nRead);
+	n = read(sock, *buffer + *nRead, *buffer_size - *nRead);
 
 	if (n == 0) {   // the client closed the connection
 		return FALSE;   // TODO: replace exit with something useful
@@ -140,7 +141,7 @@ message *message_receive(int sock)
 	// Note: the buffer may contain more data after '\n'
 	do {
 		n += nRead;
-		my_read(sock, buffer, &buffer_size, &nRead);
+		myRead(sock, &buffer, &buffer_size, &nRead);
 	} while (checkDelimiter(buffer + n, buffer_size, '\n') == 0);
 
 	message_op op = message_err;
@@ -176,7 +177,7 @@ message *message_receive(int sock)
 			lastToRead = (lasts - buffer) + 2 + len;
 
 			while (nRead < lastToRead) {
-				if (my_read(sock, buffer, &buffer_size, &nRead) == TRUE) {
+				if (myRead(sock, &buffer, &buffer_size, &nRead) == TRUE) {
 					continue;
 				} else {
 					free(buffer);
@@ -192,7 +193,7 @@ message *message_receive(int sock)
 			lastToRead = (lasts - buffer) + 2 + len;
 
 			while (nRead < lastToRead) {
-				if (my_read(sock, buffer, &buffer_size, &nRead) == TRUE) {
+				if (myRead(sock, &buffer, &buffer_size, &nRead) == TRUE) {
 					continue;
 				} else {
 					exit(EXIT_FAILURE);   // TODO: handle if there is another type of error
@@ -310,7 +311,7 @@ void message_send(int sock, message *m)
 	}
 	m->buff = buffer;
 
-	my_write(sock, buffer, size);
+	myWrite(sock, buffer, size);
 }
 
 // TODO: destroy con doppio puntatore?
