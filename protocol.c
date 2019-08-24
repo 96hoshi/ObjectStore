@@ -20,15 +20,14 @@
 #include "message.h"
 #include "common.h"
 
-int _fd_skt;
+static int _fd_skt = -1;
 
 static int sendAndReceive(message *sent)
 {
 	int result = FALSE;
-	message *received = NULL;
 
 	message_send(_fd_skt, sent);
-	received = message_receive(_fd_skt);
+	message *received = message_receive(_fd_skt);
 
 	if (received->op == message_ok) {
 		result = TRUE;
@@ -42,47 +41,41 @@ static int sendAndReceive(message *sent)
 
 int os_connect(char *name)
 {
-	int result = FALSE;
-	message *sent = NULL;
-	struct sockaddr_un sa;
-	memset(&sa, 0, sizeof(sa));
+	if (_fd_skt < 0) {
+		struct sockaddr_un sa;
+		memset(&sa, 0, sizeof(sa));
 
-	strncpy(sa.sun_path, SOCKNAME, sizeof(sa.sun_path));
-	sa.sun_family = AF_UNIX;
-	_fd_skt = socket(AF_UNIX, SOCK_STREAM, 0);
+		strncpy(sa.sun_path, SOCKNAME, sizeof(sa.sun_path));
+		sa.sun_family = AF_UNIX;
+		_fd_skt = socket(AF_UNIX, SOCK_STREAM, 0);
 
-	while (connect(_fd_skt, (struct sockaddr *)&sa, sizeof(sa)) == -1) {
-		if (errno == ENOENT)
-			sleep(1);
-		else exit(EXIT_FAILURE);
+
+		while (connect(_fd_skt, (struct sockaddr *)&sa, sizeof(sa)) == -1) {
+			if (errno == ENOENT)
+				sleep(1);
+			else exit(EXIT_FAILURE);
+		}
 	}
 
-	sent = message_create(message_register, name, 0, NULL);
-	result = sendAndReceive(sent);
-
-	return result;
+	message *sent = message_create(message_register, name, 0, NULL);
+	return sendAndReceive(sent);
 }
 
 int os_store(char *name, void *block, size_t len)
 {
-	int result = FALSE;
-	message *sent = NULL;
-
-	sent = message_create(message_store, name, len, block);
-	result = sendAndReceive(sent);
-
-	return result;
+	if (_fd_skt < 0) return FALSE;
+	message *sent = message_create(message_store, name, len, block);
+	return sendAndReceive(sent);
 }
 
 void *os_retrieve(char *name)
 {
+	if (_fd_skt < 0) return NULL;
 	void *data = NULL;
-	message *sent = NULL;
-	message *received = NULL;
 
-	sent = message_create(message_retrieve, name, 0, NULL);
+	message *sent = message_create(message_retrieve, name, 0, NULL);
 	message_send(_fd_skt, sent);
-	received = message_receive(_fd_skt);
+	message *received = message_receive(_fd_skt);
 
 	if (received->op == message_data) {
 		data = (void *)received->data;
@@ -90,29 +83,23 @@ void *os_retrieve(char *name)
 
 	message_destroy(sent);
 	message_destroy(received);
-
 	return data;
 }
 
 int os_delete(char *name)
 {
-	int result = FALSE;
-	message *sent = NULL;
-
-	sent = message_create(message_delete, name, 0, NULL);
-	result = sendAndReceive(sent);
-
-	return result;
+	if (_fd_skt < 0) return FALSE;
+	message *sent = message_create(message_delete, name, 0, NULL);
+	return sendAndReceive(sent);
 }
 
 int os_disconnect()
 {
+	if (_fd_skt < 0) return FALSE;
 	int result = FALSE;
-	message *sent = NULL;
 
-	sent = message_create(message_leave, NULL, 0, NULL);
+	message *sent = message_create(message_leave, NULL, 0, NULL);
 	result = sendAndReceive(sent);
 	close(_fd_skt);
-
 	return result;
 }

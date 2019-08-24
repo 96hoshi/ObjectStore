@@ -12,7 +12,7 @@
 // creazione fd_socket client "globale"
 // connessione su socket locale col server
 // scrittura del messaggio nel canale
-// libero memoria per il messaggio ?????
+// libero memoria per il messaggio
 // creo un buffer per la lettura
 // lettura del messaggio di risposta
 // traduzione messaggio
