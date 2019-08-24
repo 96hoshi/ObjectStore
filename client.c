@@ -1,24 +1,24 @@
-// Client che comunica con il server attraverso la libreria protocol.h
+// // Client che comunica con il server attraverso la libreria protocol.h
 
-// Per comunicare manda una richiesta di registrazione.
-// Successivamente può mandare tre tipi di richieste al server:
-// 	1.creare e memorizzare oggetti 
-// 		(20  oggetti di dimensione 100 <= dim <= 100.000 bytes
-// 		con nomi convenzionali contenenti dati facilmente verificabili)
-//				TODO:scegliere il contenuto dei files
-// 	2.recupero di oggetti e verifica della correttezza
-// 	3.cancellare oggetti
+// // Per comunicare manda una richiesta di registrazione.
+// // Successivamente può mandare tre tipi di richieste al server:
+// // 	1.creare e memorizzare oggetti 
+// // 		(20  oggetti di dimensione 100 <= dim <= 100.000 bytes
+// // 		con nomi convenzionali contenenti dati facilmente verificabili)
+// //				TODO:scegliere il contenuto dei files
+// // 	2.recupero di oggetti e verifica della correttezza
+// // 	3.cancellare oggetti
 
-// Il client riceve da linea di comando
-// 	-nome del cliente
-// 	-un numero 1-3 per sapere quale "test" eseguire
-// Finito il test stampa su stout un rapporto contenente
-// 	-#operazioni effettuate
-// 	-#operazioni concluse con successo
-// 	-#operazioni fallite
-// 	-...
-// La stampa del rapporto sarà affidata a stats.h
-// Terminati i test il client deve disconnetersi.
+// // Il client riceve da linea di comando
+// // 	-nome del cliente
+// // 	-un numero 1-3 per sapere quale "test" eseguire
+// // Finito il test stampa su stout un rapporto contenente
+// // 	-#operazioni effettuate
+// // 	-#operazioni concluse con successo
+// // 	-#operazioni fallite
+// // 	-...
+// // La stampa del rapporto sarà affidata a stats.h
+// // Terminati i test il client deve disconnetersi.
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -26,12 +26,38 @@
 #include <common.h>
 #include <protocol.h>
 
-#define N 1024
+#define N_OBJECTS 20
+#define MIN_SIZE 100
+#define MAX_SIZE 100000
+#define MAX_NAME_LEN 255
+
+
+void *createData(size_t len) {
+	char *data = (char *)calloc(len, sizeof(char));
+
+	for (size_t i = 0; i < len; ++i) {
+		char c = (char)i;
+		data[i] = c;
+	}
+	return (void *)data;
+}
+
+int checkData(void *block, char *dataname, size_t len) {
+	char *data = (char *)block;
+
+	for (size_t i = 0; i < len; ++i) {
+		char c = (char)i;
+		if (data[i] != c) {
+			return FALSE;
+		}
+	}
+	return TRUE;
+}
 
 int main(int argc, char *argv[])
 {
 	if (argc < 3) {
-		fprintf(stderr, "Not enough input");
+		fprintf(stderr, "Not enough inputs");
 		exit(EXIT_FAILURE);
 	}
 
@@ -40,43 +66,68 @@ int main(int argc, char *argv[])
 
 	char *name = argv[0];
 	char *test_str = argv[1];
-
 	int test_case = strtol(test_str, NULL, 10);
+
 	int result = FALSE;
 	size_t len = 0;
-	void *block = NULL;
 	void *data = NULL;
-	char *data_name = NULL;
+	char *dataname = NULL;
+	size_t dataname_size = 7;
+	size_t k = (MAX_SIZE - MIN_SIZE)/N_OBJECTS;
 
 
 	result = os_connect(name);
-	if (result == FALSE) {
-		//chiamo la os_disconnect ?
-		exit(EXIT_FAILURE);
-	}
+	if (result == FALSE)	exit(EXIT_FAILURE);
 
 	switch (test_case) {
 
 		case 1 :		// Memorizzazione
-			// TODO: choose
-			//		 create 20 data and store one at time
-			// 		 OR create a data before every store
-			result = os_store(name, block, len);
-			if (result == FALSE) {
-				//chiamo la os_disconnect ?
-				exit(EXIT_FAILURE);
+			for (size_t i = 0; i < N_OBJECTS; ++i) {
+				len = k * i + MIN_SIZE;
+				data = createData(len);
+				dataname = (char *)calloc(dataname_size, sizeof(char));
+				snprintf(dataname, dataname_size, "%02zu.txt", i);
+
+				result = os_store(dataname, data, len);
+
+				if (result == FALSE) {
+					// TODO: Gestire il caso
+					// os_disconnect();
+					exit(EXIT_FAILURE);
+				}
+
+				free(data);
+				data = NULL;
+				free(dataname);
+				dataname = NULL;
 			}
 			break;
 
 		case 2 :		// Lettura
-			data = os_retrieve(data_name);
-			// TODO: check if data is equal to what is inside data_name 
+			for (size_t i = 0; i < N_OBJECTS; ++i) {
+				len = k * i + MIN_SIZE;
+				dataname = (char *)calloc(dataname_size, sizeof(char));
+				snprintf(dataname, dataname_size, "%02zu.txt", i);
+
+				data = os_retrieve(dataname);
+				result = checkData(data, dataname, i);
+				if (result == FALSE) {
+					// TODO: Gestire il caso
+					// os_disconnect();
+					exit(EXIT_FAILURE);
+				}
+
+				free(data);
+				data = NULL;
+				free(dataname);
+				dataname = NULL;
+			}
 			break;
 
 		case 3 :		// Cancellazione
-			result = os_delete(data_name);
+			result = os_delete(dataname);
 			if (result == FALSE) {
-				//chiamo la os_disconnect ?
+				os_disconnect();
 				exit(EXIT_FAILURE);
 			}
 			break;
@@ -86,14 +137,7 @@ int main(int argc, char *argv[])
 			break;
 	}
 
-	os_disconnect();
+	//os_disconnect();
 
 	return 0;
 }
-
-	// message *m = message_create(NULL, message_register, "Marta", 0, NULL); 			done	// REGISTER name \n  
-	// message *m = message_create(NULL, message_store, "DataName", 9, "Some Data"); 	done		// STORE name len \n data
-								//"STORE DataName 9 \n Some Data"
-	// message *m = message_create(NULL, message_data, NULL, 9, "Some Data");			done	// DATA len \n data
-	// message *m = message_create(NULL, message_ko, "Bad String", 0, NULL);			done	// KO message \n
-	// message *m = message_create(NULL, message_leave, NULL, 0, NULL);					done	// LEAVE \n
