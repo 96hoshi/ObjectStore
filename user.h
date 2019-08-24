@@ -19,7 +19,6 @@
 typedef struct {
 	char *name;
 	list *objects;
-	int fd;
 } user;
 
 // - Alloca memoria per una struttura di tipo user
@@ -27,7 +26,7 @@ typedef struct {
 // - Copia la stringa name nella struttura user
 // - Crea la lista di object
 // - Copia nel campo fd il valore della socket usata dall'user
-user *user_create(char *name, int fd);
+user *user_create(char *name);
 
 // - Cerca con una funzione di libreria l'oggetto di nome name
 //   nella lista objs

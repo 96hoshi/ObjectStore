@@ -4,7 +4,7 @@
 #include <string.h>
 
 
-user *user_create(char *name, int fd) 
+user *user_create(char *name)
 {
 	if (name == NULL) return NULL;
 
@@ -13,7 +13,6 @@ user *user_create(char *name, int fd)
 	u->name = (char *)calloc(name_len, sizeof(char));
 	u->name = strncpy(u->name, name, name_len);
 	u->objects = list_create(object_compare, object_compare_name, object_destroy, object_print);
-	u->fd = fd;
 
 	return u;
 }
