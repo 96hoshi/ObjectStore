@@ -3,8 +3,9 @@
 #include <string.h>
 #include "object.h"
 #include "user.h"
-#include "list.h"S
+#include "list.h"
 #include "common.h"
+#include "message.h"
 
 #define OBJS_N 2
 void test_object()
@@ -54,15 +55,15 @@ void test_list()
 		str[0] = 'a' + i;
 		str[1] = '\0';
 
-		user *u = user_create(str, i);
+		user *u = user_create(str);
 		err = list_insert_unsafe(user_list, u);
 		if (err != list_success) {
 			test++;
 		}
 		free(str);
 	}
-	user *duplicate_u = user_create("a", -1);
-	user *wrong_u = user_create("w", -1);
+	user *duplicate_u = user_create("a");
+	user *wrong_u = user_create("w");
 
 	// Search_field tests
 	user *u = (user *)list_search_field_unsafe(user_list, duplicate_u->name);
@@ -108,10 +109,10 @@ void test_list()
 }
 void message_print(message *m) {
 	printf("m->buff = %s\n", m->buff);
-	printf("m->OP = %d\n", m->OP);
+	printf("m->op = %d\n", m->op);
 	printf("m->name = %s\n", m->name);
 	printf("m->len = %zu\n", m->len);
-	printf("m->data = %p %c\n", m->data, m->data[0]);
+	if (data != NULL)	printf("m->data = %p %c\n", m->data, m->data[0]);
 }
 
 int main(int argc, char * argv[])

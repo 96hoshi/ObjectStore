@@ -32,10 +32,10 @@ runserver : objStore
 	./$^
 
 valgrindclient : client
-	valgrind ./$^
+	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose ./$^ Marta 1
 
 valgrindserver : objStore
-	valgrind ./$^
+	valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose ./$^
 
 
 all : $(TARGET)

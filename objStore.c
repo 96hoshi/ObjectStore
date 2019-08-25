@@ -106,6 +106,7 @@ int handle_register(message *m, user **client)
 
 	node *n = list_search(_users, name, user_compare_name);
 	*client = (n != NULL ? n->info : NULL);
+	//
 	if (*client == NULL) {
 		char buff[MAX_BUFF];
 
@@ -114,34 +115,37 @@ int handle_register(message *m, user **client)
 		*client = user_create(name);
 		list_result res = list_insert(_users, *client);
 
-		if (res != list_success) return FALSE;
+		if (res != list_success)	return FALSE;
 	}
 	return TRUE;
 }
 
-// int handle_store(message *m, user **client)
-// {
-// 	char *dataname = m->name;
-// 	size_t len = m->len;
-// 	char *data = m->data;
+int handle_store(message *m, user **client)
+{
+	char *dataname = m->name;
+	size_t len = m->len;
+	char *data = m->data;
 
-// 	//TODO: creazione del file che conterrà data!
+	if (*client == NULL)	return FALSE;
 
-// 	object *obj = object_create(dataname, len);
-// 	// TODO: Non funge l'inserzione dei dati
-// 	//list_result res = list_insert_unsafe((*client)->objects, obj);
+	//TODO: creazione del file che conterrà data!
 
-// 	if (res != list_success) return FALSE;
-// 	printf("Object added successfully!\n");
-// 	stats_server_incr_obj();
-// 	stats_server_incr_size(len);
-// 	return TRUE;
-// }
+	object *obj = object_create(dataname, len);
+	list_result res = list_insert_unsafe((*client)->objects, obj);
+
+	if (res != list_success) return FALSE;
+	printf("Object added successfully!\n");
+	stats_server_incr_obj();
+	stats_server_incr_size(len);
+	return TRUE;
+}
 
 void *handle_client(void *arg)
 {
 	int fd_c = (int)arg;
+	user *client = NULL;
 	int done = FALSE;
+	int result = FALSE;
 	client_stats c_stats = stats_client_create();
 
 	while (!done && !_is_exit) {
@@ -158,8 +162,6 @@ void *handle_client(void *arg)
 		}
 
 		message_op op = received->op;
-		int result = FALSE;
-		user *client = NULL;
 
 		switch(op) {
 
@@ -195,7 +197,6 @@ void *handle_client(void *arg)
 				} else {
 					c_stats.fail_ops++;
 					sent = message_create(message_ko, NULL, 0, "ERROR: Store failed");
-					done = TRUE;
 				}
 				message_send(fd_c, sent);
 
@@ -281,6 +282,7 @@ int main(int argc, char *argv[])
 	// 	close(fd_skt);
 	// 	exit(EXIT_SUCCESS);
 	// }
+	puts("Server cleaning...\n");
 	list_destroy(_users);
 	pthread_mutex_destroy(&_running_threads_mux);
 	stats_server_destroy();
