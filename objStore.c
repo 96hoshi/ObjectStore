@@ -100,13 +100,51 @@ void makeDirectory(char *path)
 	}
 }
 
+int storeFile(void *data, char *dataname, size_t len, char *clientname)
+{
+	//TODO: to fix: it creates 11/20 files
+	FILE *data_file = NULL;
+	char buff[MAX_BUFF];
+	sprintf(buff, "%s/%s/%s", PATH_DATA, clientname, dataname);
+
+	// file already exists
+	// TODO: to remove, used for testing
+	if (access(buff, F_OK) != -1) return TRUE;
+
+	data_file = fopen(buff, "w");
+	if(data_file == NULL) return FALSE;
+
+	fwrite(data, sizeof(char), len, data_file);
+	fclose(data_file);
+	return TRUE;
+}
+
+// void *retrieveFile(char *dataname, size_t len, char *clientname)
+// {
+// 	FILE *data_file = NULL;
+// 	void *data = NULL; //alloca spazio
+// 	char buff[MAX_BUFF];
+// 	sprintf(buff, "%s/%s/%s", PATH_DATA, clientname, dataname);
+
+// 	// file doesn't exist
+// 	if (access( buff, F_OK ) == -1) return NULL;
+
+// 	data_file = fopen(buff, "r");
+// 	if(data_file == NULL) return NULL;
+
+// 	fread(data, sizeof(char), len, data_file);
+// 	fclose(data_file);
+// 	return data;
+// }
+
+
 int handle_register(message *m, user **client)
 {
 	char *name = m->name;
 
 	node *n = list_search(_users, name, user_compare_name);
 	*client = (n != NULL ? n->info : NULL);
-	//
+
 	if (*client == NULL) {
 		char buff[MAX_BUFF];
 
@@ -115,30 +153,58 @@ int handle_register(message *m, user **client)
 		*client = user_create(name);
 		list_result res = list_insert(_users, *client);
 
-		if (res != list_success)	return FALSE;
+		if (res != list_success) return FALSE;
 	}
 	return TRUE;
 }
 
 int handle_store(message *m, user **client)
 {
+	if (*client == NULL) return FALSE;
+
 	char *dataname = m->name;
 	size_t len = m->len;
 	char *data = m->data;
-
-	if (*client == NULL)	return FALSE;
+	char *name = (*client)->name;
+	list *objects = (*client)->objects;
+	int result = FALSE;
 
 	//TODO: creazione del file che conterrà data!
+	result = storeFile(data, dataname, len, name);
+	if (result == FALSE) return FALSE;
 
 	object *obj = object_create(dataname, len);
-	list_result res = list_insert_unsafe((*client)->objects, obj);
+	list_result res = list_insert_unsafe(objects, obj);
 
 	if (res != list_success) return FALSE;
-	printf("Object added successfully!\n");
 	stats_server_incr_obj();
 	stats_server_incr_size(len);
 	return TRUE;
 }
+
+// void *handle_retrieve(message *m, user *client, size_t *len)
+// {
+// 	char *dataname = m->name;
+// 	char *name = client->name;
+// 	list *objects = client->objects;
+// 	void * data = NULL;
+
+// 	node *n = list_search_unsafe(objects, dataname, object_compare_name);
+// 	object *obj = (n != NULL ? n->info : NULL);
+
+// 	if (obj == NULL) return FALSE;
+
+// 	*len = obj->len;
+// 	data = retrieveFile(dataname, *len, name);
+
+// 	return data;
+
+// }
+
+// int handle_delete(message *m, user **client)
+// {
+
+// }
 
 void *handle_client(void *arg)
 {
@@ -162,6 +228,8 @@ void *handle_client(void *arg)
 		}
 
 		message_op op = received->op;
+		// void *data = NULL;
+		// size_t len = 0;
 
 		switch(op) {
 
@@ -173,52 +241,78 @@ void *handle_client(void *arg)
 					stats_server_incr_client();
 					c_stats.success_ops++;
 					sent = message_create(message_ok, NULL, 0, NULL);
-					printf("Connect tutto ok!!\n");
+					printf("Client connected\n");
 				} else {
 					c_stats.fail_ops++;
 					sent = message_create(message_ko, NULL, 0, "ERROR: Register failed");
 					done = TRUE;
 				}
 				message_send(fd_c, sent);
-
-				message_destroy(received);
-				message_destroy(sent);
 				break;
 
 			case message_store:			// STORE name len \n data
-				printf("Server got: Message_store\n");
-				//result = handle_store(received, &client);
+				result = handle_store(received, &client);
 				c_stats.total_ops++;
 
 				if (result == TRUE) {
 					c_stats.success_ops++;
 					sent = message_create(message_ok, NULL, 0, NULL);
-					printf("Store tutto ok!!\n");
+					printf("Object stored\n");
 				} else {
 					c_stats.fail_ops++;
 					sent = message_create(message_ko, NULL, 0, "ERROR: Store failed");
 				}
 				message_send(fd_c, sent);
-
-				message_destroy(received);
-				message_destroy(sent);
-
 				break;
+
 			case message_retrieve:		// RETRIEVE name \n
+				// data = handle_retrieve(received, client, &len);
+				// c_stats.total_ops++;
+				// if (data != NULL) {
+				// 	result = TRUE;
+				// }
 
+				// if (result == TRUE) {
+				// 	c_stats.success_ops++;
+				// 	sent = message_create(message_data, NULL, len, data); // DATA len \n data
+				// 	printf("Object retrieved\n");
+				// } else {
+				// 	c_stats.fail_ops++;
+				// 	sent = message_create(message_ko, NULL, 0, "ERROR: Retrieve failed");
+				// }
+				// message_send(fd_c, sent);
 				break;
+
 			case message_delete:		// DELETE name \n
+				// result = handle_delete(received, &client);
+				// c_stats.total_ops++;
 
+				// if (result == TRUE) {
+				// 	c_stats.success_ops++;
+				// 	sent = message_create(message_ok, NULL, 0, NULL); // DATA len \n data
+				// 	printf("Object removed\n");
+				// } else {
+				// 	c_stats.fail_ops++;
+				// 	sent = message_create(message_ko, NULL, 0, "ERROR: Delete failed");
+				// }
+				// message_send(fd_c, sent);
 				break;
+
 			case message_leave:			// LEAVE \n
-
-
+				sent = message_create(message_ok, NULL, 0, NULL);
+				message_send(fd_c, sent);
+				c_stats.total_ops++;
+				c_stats.success_ops++;
+				done = TRUE;
 				break;
+
 			case message_err:
 			default:
 				invalid_operation(NULL);
 				break;
 		}
+		message_destroy(received);
+		message_destroy(sent);
 	}
 	// TODO definire la funzione decr_threads() protetta da lock
 	stats_server_decr_client();
