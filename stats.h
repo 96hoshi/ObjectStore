@@ -39,6 +39,8 @@ typedef struct {
 } server_stats;
 
 server_stats _s_stats;
+volatile int _print_stats;
+
 
 client_stats stats_client_create();
 
@@ -47,7 +49,7 @@ void stats_client_print(client_stats c_stats);
 
 //NOTA!
 // chiamare stats_server_incr_client() dopo una connect
-// chiamarestats_server_decr_client() dopo una disconnect!
+// chiamarestats_server_decr_client() dopo una disconnect! o dopo un'ucita andata male
 
 void stats_server_create();
 
