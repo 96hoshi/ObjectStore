@@ -36,8 +36,8 @@ void *createData(size_t len) {
 	char *data = (char *)calloc(len, sizeof(char));
 
 	for (size_t i = 0; i < len; ++i) {
-		char c = (char)i;
-		data[i] = c;
+		//char c = (char)i;
+		data[i] = 'b';
 	}
 	return (void *)data;
 }
@@ -83,6 +83,7 @@ int main(int argc, char *argv[])
 
 		case 1 :		// Memorizzazione
 			for (size_t i = 0; i < N_OBJECTS; ++i) {
+				printf("Sending object number: %zu\n", i);
 				len = k * i + MIN_SIZE;
 				data = createData(len);
 				dataname = (char *)calloc(dataname_size, sizeof(char));
@@ -92,8 +93,7 @@ int main(int argc, char *argv[])
 
 				if (result == FALSE) {
 					// TODO: Gestire il caso
-					// os_disconnect();
-					exit(EXIT_FAILURE);
+					printf("rip data %zu\n", i);
 				}
 
 				free(data);
@@ -137,7 +137,8 @@ int main(int argc, char *argv[])
 			break;
 	}
 
-	//os_disconnect();
+	printf("disconnect\n");
+	os_disconnect();
 
 	return 0;
 }
