@@ -57,12 +57,15 @@ static message_op getOp(char *op_str)
 	return message_err;
 }
 
-static int checkDelimiter(char *buffer, size_t buffer_size, char delimiter)
+static ssize_t getPosDelimiter(char *buffer, size_t buffer_size, char delimiter)
 {
-	size_t i;
-
+	ssize_t i;
 	for (i = 0; (i < (buffer_size - 1)) && (buffer[i] != delimiter); i++);
-	return (buffer[i] == delimiter);
+
+	if (buffer[i] == delimiter) {
+		return i;
+	}
+	return -1;
 }
 
 static void myWrite(int sock, char *buffer, size_t len) {
@@ -81,34 +84,58 @@ static void myWrite(int sock, char *buffer, size_t len) {
 	}
 }
 
-static int myRead(int sock,
-				   char **buffer,
-				   size_t *buffer_size,
-				   ssize_t *nRead)
+static int read_header(int sock, char *buffer, size_t buffer_size, size_t *posDelimiter, size_t *nRead)
 {
-	ssize_t n = 0;
+	ssize_t p = -1;	// local position delimiter
+	size_t r = 0;	// local number of char already read
 
-	if (*nRead == *buffer_size) {
-		*buffer_size = *buffer_size * 2;
-		*buffer = realloc(*buffer, *buffer_size);
-		if (*buffer == NULL) {
-			free(*buffer);
-			exit(EXIT_FAILURE); //TODO: replace exit with something useful
+	while (p < 0) {
+		ssize_t n = read(sock, buffer + r, buffer_size - r);
+
+		// handle connection closed
+		if (n == 0) {
+			return FALSE;
 		}
-	}
 
-	n = read(sock, *buffer + *nRead, *buffer_size - *nRead);
-
-	if (n == 0) {   // the client closed the connection
-		return FALSE;   // TODO: replace exit with something useful
-	}
-	if (n < 0) {
-		if (errno == EINTR) {   // if the call was canceled by an interrupt
-			return TRUE;
+		if (n < 0) {
+			// handle delivery of a signal
+			if (errno == EINTR) {
+				continue;
+			}
+			return FALSE;
 		}
-		return FALSE;
+
+		p = getPosDelimiter(buffer + r, buffer_size, '\n');
+		r += n;
 	}
-	*nRead += n;
+
+	*posDelimiter = p;
+	*nRead = r;
+
+	return TRUE;
+}
+
+static int read_data(int sock, char *buffer, size_t buffer_size, size_t nRead)
+{
+	while (nRead < buffer_size) {
+		ssize_t n = read(sock, buffer + nRead, buffer_size - nRead);
+
+		// handle connection closed
+		if (n == 0) {
+			return FALSE;
+		}
+
+		if (n < 0) {
+			// handle delivery of a signal
+			if (errno == EINTR) {
+				continue;
+			}
+			return FALSE;
+		}
+
+		nRead += n;
+	}
+
 	return TRUE;
 }
 
@@ -128,21 +155,33 @@ message *message_create(message_op op,
 	return m;
 }
 
+static void message_print(message *m) {
+	printf("m->op = %s\n", ops[m->op]);
+	printf("m->name = %s\n", (m->name != NULL ? m->name : "NULL"));
+	printf("m->len = %zu\n", m->len);
+	printf("m->data = [");
+	for (size_t i = 0; i < (m->len > 2 ? 2 : 0); ++i) {
+		printf("%c", ((char *)m->data)[i]);
+	}
+	printf("]\n");
+}
+
 message *message_receive(int sock)
 {
-	size_t buffer_size = MAX_BUFF;
+	size_t buffer_size = MAX_BUFF; // MAX_BUFF must be at least 1024
 	char * lasts = NULL;
 	char * buffer = (char *)calloc(buffer_size, sizeof(char));
 
-	ssize_t n = 0;
-	ssize_t nRead = 0;
+	size_t posDelimiter = 0;
+	size_t nRead = 0;
 
 	// read from socket until it found '\n' in the buffer.
 	// Note: the buffer may contain more data after '\n'
-	do {
-		n += nRead;
-		myRead(sock, &buffer, &buffer_size, &nRead);
-	} while (checkDelimiter(buffer + n, buffer_size, '\n') == 0);
+	
+	if (read_header(sock, buffer, buffer_size, &posDelimiter, &nRead) == FALSE) {
+		free(buffer);
+		exit(EXIT_FAILURE); //TODO: replace exit with something useful
+	}
 
 	message_op op = message_err;
 	char * name = NULL;
@@ -152,13 +191,7 @@ message *message_receive(int sock)
 	char * len_str = NULL;
 	char * op_str = NULL;
 
-	size_t lastToRead = 0;
-	// 	lastToRead
-	// (lasts - buffer) = the number of bytes already read up to "\n" (not included)
-	// 2 count for the two char "\n " before "data" 
-	// len = number of bytes of "data"
-
-	op_str = strtok_r(buffer, " ", &lasts); // get the op string
+	op_str = strtok_r(buffer, " ", &lasts); // get the operation string
 	op = getOp(op_str);
 
 	switch(op) {
@@ -170,34 +203,24 @@ message *message_receive(int sock)
 			break;
 
 		case message_store:			// STORE name len \n data
-			name = strtok_r(NULL, " ", &lasts); // get the name
-			len_str = strtok_r(NULL, " ", &lasts);  // get the len
-			len = strtol(len_str, NULL, 10);
-			data = lasts + 2;
-			lastToRead = (lasts - buffer) + 2 + len;
+			name = strtok_r(NULL, " ", &lasts);		// get the name
+		case message_data:			// DATA len \n data
+			len_str = strtok_r(NULL, " ", &lasts);	// get the length of data
+			data = lasts + 2;						// get the pointer of data
+			len = strtol(len_str, NULL, 10);		// convert len_str to len
 
-			while (nRead < lastToRead) {
-				if (myRead(sock, &buffer, &buffer_size, &nRead) == TRUE) {
-					continue;
-				} else {
+			buffer_size = posDelimiter + 2 + len;
+			if (buffer_size > MAX_BUFF) {
+				buffer = realloc(buffer, buffer_size);
+				if (buffer == NULL) {
 					free(buffer);
-					exit(EXIT_FAILURE);   // if there is another type of error
+					exit(EXIT_FAILURE); //TODO: replace exit with something useful
 				}
 			}
-			break;
-
-		case message_data:			// DATA len \n data
-			len_str = strtok_r(NULL, " ", &lasts);  // get the len
-			len = strtol(len_str, NULL, 10);
-			data = lasts + 2;
-			lastToRead = (lasts - buffer) + 2 + len;
-
-			while (nRead < lastToRead) {
-				if (myRead(sock, &buffer, &buffer_size, &nRead) == TRUE) {
-					continue;
-				} else {
-					exit(EXIT_FAILURE);   // TODO: handle if there is another type of error
-				}
+			
+			if (read_data(sock, buffer, buffer_size, nRead) == FALSE) {
+				free(buffer);
+				exit(EXIT_FAILURE); //TODO: replace exit with something useful
 			}
 			break;
 
@@ -216,6 +239,9 @@ message *message_receive(int sock)
 	}
 	message *m = message_create(op, name, len, data);
 	m->buff = buffer;
+
+	printf("Message received:\n");
+	// message_print(m);
 
 	return m;
 
@@ -294,7 +320,7 @@ void message_send(int sock, message *m)
 
 		case message_ko:			// "KO message \n"
 			len_op = strlen(ops[op]);
-			len_name = strlen(name);
+			len_name = (name != NULL ? strlen(name) : 0);
 			//		OP + space + message + space + '\n'
 			size = len_op + 1 + len_name + 1 + 1;
 
