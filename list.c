@@ -170,10 +170,10 @@ list_result list_insert(list *l, void *info)
 	return l_res;
 }
 
-node *list_search(list *l, void *info, fun_info_compare info_compare)
+void *list_search(list *l, void *info, fun_info_compare info_compare)
 {
 	if (list_lock(l) != 0) return NULL;
-	node *n = list_search_unsafe(l, info, info_compare);
+	void *n = list_search_unsafe(l, info, info_compare);
 	if (list_unlock(l) != 0) return NULL;
 
 	return n;

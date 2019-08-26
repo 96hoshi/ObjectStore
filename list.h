@@ -100,7 +100,7 @@ list_result list_print(list *l);
 
 list_result list_insert(list *l, void *info);
 
-node *list_search(list *l, void *info, fun_info_compare info_compare);
+void *list_search(list *l, void *info, fun_info_compare info_compare);
 
 list_result list_delete(list *l, void *info, fun_info_compare info_compare);
 
