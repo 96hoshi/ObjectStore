@@ -100,41 +100,23 @@ void makeDirectory(char *path)
 	}
 }
 
-int storeFile(void *data, char *dataname, size_t len, char *clientname)
-{
-	//TODO: to fix: it creates 11/20 files
-	FILE *data_file = NULL;
-	char buff[MAX_BUFF];
-	sprintf(buff, "%s/%s/%s", PATH_DATA, clientname, dataname);
-
-	// file already exists
-	// TODO: to remove, used for testing
-	if (access(buff, F_OK) != -1) return TRUE;
-
-	data_file = fopen(buff, "w");
-	if(data_file == NULL) return FALSE;
-
-	fwrite(data, sizeof(char), len, data_file);
-	fclose(data_file);
-	return TRUE;
-}
-
 // void *retrieveFile(char *dataname, size_t len, char *clientname)
 // {
 // 	FILE *data_file = NULL;
-// 	void *data = NULL; //alloca spazio
-// 	char buff[MAX_BUFF];
-// 	sprintf(buff, "%s/%s/%s", PATH_DATA, clientname, dataname);
+// 	char *data = (char *)calloc(len, sizeof(char));
+// 	check_calloc(data, NULL);
+// 	char path[MAX_BUFF];
+// 	sprintf(path, "%s/%s/%s", PATH_DATA, clientname, dataname);
 
 // 	// file doesn't exist
-// 	if (access( buff, F_OK ) == -1) return NULL;
+// 	if (access( path, F_OK ) == -1) return NULL;
 
-// 	data_file = fopen(buff, "r");
+// 	data_file = fopen(path, "r");
 // 	if(data_file == NULL) return NULL;
 
 // 	fread(data, sizeof(char), len, data_file);
 // 	fclose(data_file);
-// 	return data;
+// 	return (void *)data;
 // }
 
 
@@ -146,15 +128,39 @@ int handle_register(message *m, user **client)
 	*client = (n != NULL ? n->info : NULL);
 
 	if (*client == NULL) {
-		char buff[MAX_BUFF];
+		char path[MAX_BUFF];
 
-		sprintf(buff, "%s/%s", PATH_DATA, name);
-		makeDirectory(buff);
+		sprintf(path, "%s/%s", PATH_DATA, name);
+		makeDirectory(path);
 		*client = user_create(name);
 		list_result res = list_insert(_users, *client);
 
 		if (res != list_success) return FALSE;
 	}
+	return TRUE;
+}
+
+int storeFile(void *data, char *dataname, size_t len, char *clientname)
+{
+	FILE *data_file = NULL;
+	char path[MAX_BUFF];
+	sprintf(path, "%s/%s/%s", PATH_DATA, clientname, dataname);
+
+	// file already exists
+	// TODO: to remove, used for testings
+	if (access(path, F_OK) != -1) {
+		printf("%s: File already exists\n", path);
+		return FALSE;
+	}
+	data_file = fopen(path, "w");
+	if(data_file == NULL) {
+		fprintf(stderr, "%s: Filed fopen\n", path);
+		return FALSE;
+	}
+
+	fwrite(data, sizeof(char), len, data_file);
+	fclose(data_file);
+	fprintf(stderr, "%s: Stored file\n", path);
 	return TRUE;
 }
 
@@ -171,7 +177,7 @@ int handle_store(message *m, user **client)
 
 	//TODO: creazione del file che conterrà data!
 	result = storeFile(data, dataname, len, name);
-	if (result == FALSE) return FALSE;
+	if (result == FALSE) return result;
 
 	object *obj = object_create(dataname, len);
 	list_result res = list_insert_unsafe(objects, obj);
@@ -186,19 +192,12 @@ int handle_store(message *m, user **client)
 // {
 // 	char *dataname = m->name;
 // 	char *name = client->name;
-// 	list *objects = client->objects;
-// 	void * data = NULL;
 
-// 	node *n = list_search_unsafe(objects, dataname, object_compare_name);
-// 	object *obj = (n != NULL ? n->info : NULL);
-
-// 	if (obj == NULL) return FALSE;
-
+// 	object *obj = user_search_object(client, dataname);
+// 	if (obj == NULL) return NULL;
 // 	*len = obj->len;
-// 	data = retrieveFile(dataname, *len, name);
 
-// 	return data;
-
+// 	return retrieveFile(dataname, *len, name);
 // }
 
 // int handle_delete(message *m, user **client)
@@ -241,10 +240,10 @@ void *handle_client(void *arg)
 					stats_server_incr_client();
 					c_stats.success_ops++;
 					sent = message_create(message_ok, NULL, 0, NULL);
-					printf("Client connected\n");
+					fprintf(stderr, "Client connected\n");
 				} else {
 					c_stats.fail_ops++;
-					sent = message_create(message_ko, NULL, 0, "ERROR: Register failed");
+					sent = message_create(message_ko, "ERROR: Register failed", 0, NULL);
 					done = TRUE;
 				}
 				message_send(fd_c, sent);
@@ -257,10 +256,10 @@ void *handle_client(void *arg)
 				if (result == TRUE) {
 					c_stats.success_ops++;
 					sent = message_create(message_ok, NULL, 0, NULL);
-					printf("Object stored\n");
+					//fprintf(stderr, "Object stored\n");
 				} else {
 					c_stats.fail_ops++;
-					sent = message_create(message_ko, NULL, 0, "ERROR: Store failed");
+					sent = message_create(message_ko, "ERROR: Store failed", 0, NULL);
 				}
 				message_send(fd_c, sent);
 				break;
@@ -268,17 +267,14 @@ void *handle_client(void *arg)
 			case message_retrieve:		// RETRIEVE name \n
 				// data = handle_retrieve(received, client, &len);
 				// c_stats.total_ops++;
-				// if (data != NULL) {
-				// 	result = TRUE;
-				// }
 
-				// if (result == TRUE) {
+				// if (data != NULL) {
 				// 	c_stats.success_ops++;
 				// 	sent = message_create(message_data, NULL, len, data); // DATA len \n data
-				// 	printf("Object retrieved\n");
+				// 	fprintf(stderr, "Object retrieved\n");
 				// } else {
 				// 	c_stats.fail_ops++;
-				// 	sent = message_create(message_ko, NULL, 0, "ERROR: Retrieve failed");
+				// 	sent = message_create(message_ko, "ERROR: Retrieve failed", 0, NULL);
 				// }
 				// message_send(fd_c, sent);
 				break;
@@ -290,10 +286,10 @@ void *handle_client(void *arg)
 				// if (result == TRUE) {
 				// 	c_stats.success_ops++;
 				// 	sent = message_create(message_ok, NULL, 0, NULL); // DATA len \n data
-				// 	printf("Object removed\n");
+				// 	fprintf(stderr, "Object removed\n");
 				// } else {
 				// 	c_stats.fail_ops++;
-				// 	sent = message_create(message_ko, NULL, 0, "ERROR: Delete failed");
+				// 	sent = message_create(message_ko, "ERROR: Delete failed", 0, NULL);
 				// }
 				// message_send(fd_c, sent);
 				break;
