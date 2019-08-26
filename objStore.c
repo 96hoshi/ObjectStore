@@ -124,8 +124,8 @@ int handle_register(message *m, user **client)
 {
 	char *name = m->name;
 
-	node *n = list_search(_users, name, user_compare_name);
-	*client = (n != NULL ? n->info : NULL);
+	*client = (user *)list_search(_users, name, user_compare_name);
+	//*client = (n != NULL ? n->info : NULL);
 
 	if (*client == NULL) {
 		char path[MAX_BUFF];
@@ -172,15 +172,13 @@ int handle_store(message *m, user **client)
 	size_t len = m->len;
 	char *data = m->data;
 	char *name = (*client)->name;
-	list *objects = (*client)->objects;
 	int result = FALSE;
 
 	//TODO: creazione del file che conterrà data!
 	result = storeFile(data, dataname, len, name);
 	if (result == FALSE) return result;
 
-	object *obj = object_create(dataname, len);
-	list_result res = list_insert_unsafe(objects, obj);
+	list_result res = user_insert_object(*client, dataname, len);
 
 	if (res != list_success) return FALSE;
 	stats_server_incr_obj();
@@ -215,14 +213,6 @@ void *handle_client(void *arg)
 	while (!done && !_is_exit) {
 		message *received = message_receive(fd_c);
 		message *sent = NULL;
-
-		if (_is_exit == TRUE) {
-			message_destroy(received);
-			//mando la ko?
-			stats_server_decr_client();
-			close(fd_c);
-			exit(EXIT_FAILURE); // TODO: gestire la chiusura di tutti i thread
-		}
 
 		message_op op = received->op;
 		// void *data = NULL;
