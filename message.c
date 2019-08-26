@@ -156,14 +156,14 @@ message *message_create(message_op op,
 }
 
 static void message_print(message *m) {
-	printf("m->op = %s\n", ops[m->op]);
-	printf("m->name = %s\n", (m->name != NULL ? m->name : "NULL"));
-	printf("m->len = %zu\n", m->len);
-	printf("m->data = [");
-	for (size_t i = 0; i < (m->len > 2 ? 2 : 0); ++i) {
-		printf("%c", ((char *)m->data)[i]);
-	}
-	printf("]\n");
+	// printf("m->op = %s\n", ops[m->op]);
+	// printf("m->name = %s\n", (m->name != NULL ? m->name : "NULL"));
+	// printf("m->len = %zu\n", m->len);
+	// printf("m->data = [");
+	// for (size_t i = 0; i < (m->len > 2 ? 2 : 0); ++i) {
+	// 	printf("%c", ((char *)m->data)[i]);
+	// }
+	// printf("]\n");
 }
 
 message *message_receive(int sock)
@@ -188,6 +188,9 @@ message *message_receive(int sock)
 	size_t len = 0;
 	char * data = NULL;
 
+	int offset_name = 0;
+	int offset_data = 0;
+
 	char * len_str = NULL;
 	char * op_str = NULL;
 
@@ -202,8 +205,31 @@ message *message_receive(int sock)
 			name = strtok_r(NULL, " ", &lasts); // get the name
 			break;
 
+			//STORE 00.txt 5
 		case message_store:			// STORE name len \n data
 			name = strtok_r(NULL, " ", &lasts);		// get the name
+			offset_name = strlen(op_str) + 1;
+			len_str = strtok_r(NULL, " ", &lasts);	// get the length of data
+			data = lasts + 2;						// get the pointer of data
+			len = strtol(len_str, NULL, 10);		// convert len_str to len
+			offset_data = offset_name + strlen(name) + 1 + strlen(len_str) + 3;
+
+			buffer_size = posDelimiter + 2 + len;
+			if (buffer_size > MAX_BUFF) {
+				buffer = realloc(buffer, buffer_size);
+				if (buffer == NULL) {
+					free(buffer);
+					exit(EXIT_FAILURE); //TODO: replace exit with something useful
+				}
+				name = buffer + offset_name;
+				data = buffer + offset_data;
+			}
+			if (read_data(sock, buffer, buffer_size, nRead) == FALSE) {
+				free(buffer);
+				exit(EXIT_FAILURE); //TODO: replace exit with something useful
+			}
+
+			break;
 		case message_data:			// DATA len \n data
 			len_str = strtok_r(NULL, " ", &lasts);	// get the length of data
 			data = lasts + 2;						// get the pointer of data
@@ -240,8 +266,18 @@ message *message_receive(int sock)
 	message *m = message_create(op, name, len, data);
 	m->buff = buffer;
 
-	printf("Message received:\n");
-	// message_print(m);
+	if (data != NULL) {
+		for (size_t i = 0; i < len; ++i) {
+			if (m->data[i] != 'b') {
+				fprintf(stderr, "Wrong read at index: %zu\n", i);
+				fprintf(stderr, "char: %c\n", m->data[i]);
+				exit(EXIT_FAILURE);
+			}
+		}
+	}
+
+	fprintf(stderr, "Message received:\n");
+	message_print(m);
 
 	return m;
 
@@ -289,6 +325,7 @@ void message_send(int sock, message *m)
 			buffer = (char *)calloc(size + 1, sizeof(char));
 			check_calloc(buffer, NULL);
 			offset = sprintf(buffer, "%s %s %zu \n ", ops[op], name, len);
+			buffer[offset] = ' ';
 			memcpy(buffer + offset, data, len);
 			break;
 
@@ -303,6 +340,7 @@ void message_send(int sock, message *m)
 			buffer = (char *)calloc(size + 1, sizeof(char));
 			check_calloc(buffer, NULL);
 			offset = sprintf(buffer, "%s %zu \n ", ops[op], len);
+			buffer[offset] = ' ';
 			memcpy(buffer + offset, data, len);
 			break;
 
@@ -338,6 +376,8 @@ void message_send(int sock, message *m)
 	m->buff = buffer;
 
 	myWrite(sock, buffer, size);
+	printf("Message sent:\n");
+	message_print(m);
 }
 
 // TODO: destroy con doppio puntatore?
