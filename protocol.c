@@ -32,6 +32,10 @@ static int sendAndReceive(message *sent)
 	if (received->op == message_ok) {
 		result = TRUE;
 	}
+	if (received->op == message_ko) {
+		printf("%s\n", received->name);
+		result = FALSE;
+	}
 
 	message_destroy(sent);
 	message_destroy(received);
