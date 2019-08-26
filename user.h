@@ -32,6 +32,10 @@ user *user_create(char *name);
 //   nella lista objs
 object *user_search_object(user *u, void *name);
 
+// - Inserisce con una funzione di libreria l'oggetto di nome name
+//   e lunghezza len nella lista objs
+list_result user_insert_object(user *u, char *name, size_t len);
+
 // - Confronta un user con un atro user
 int user_compare(void *usr1, void *usr2);
 

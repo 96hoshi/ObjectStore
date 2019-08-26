@@ -24,6 +24,14 @@ object *user_search_object(user *u, void *name)
 	return (object *)list_search_field_unsafe(u->objects, name);
 }
 
+list_result user_insert_object(user *u, char *name, size_t len)
+{
+	if (u == NULL) return list_null;
+
+	object *obj = object_create(name, len);
+	return list_insert_unsafe(u->objects, obj);
+}
+
 int user_compare(void *usr1, void *usr2)
 {
 	user *u1 = (user *)usr1;
