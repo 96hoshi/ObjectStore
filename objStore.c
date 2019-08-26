@@ -211,7 +211,6 @@ void *handle_client(void *arg)
 	user *client = NULL;
 	int done = FALSE;
 	int result = FALSE;
-	client_stats c_stats = stats_client_create();
 
 	while (!done && !_is_exit) {
 		message *received = message_receive(fd_c);
@@ -220,7 +219,6 @@ void *handle_client(void *arg)
 		if (_is_exit == TRUE) {
 			message_destroy(received);
 			//mando la ko?
-			stats_client_print(c_stats);
 			stats_server_decr_client();
 			close(fd_c);
 			exit(EXIT_FAILURE); // TODO: gestire la chiusura di tutti i thread
@@ -234,15 +232,12 @@ void *handle_client(void *arg)
 
 			case message_register:		// REGISTER name \n
 				result = handle_register(received, &client);
-				c_stats.total_ops++;
 
 				if (result == TRUE) {
 					stats_server_incr_client();
-					c_stats.success_ops++;
 					sent = message_create(message_ok, NULL, 0, NULL);
 					fprintf(stderr, "Client connected\n");
 				} else {
-					c_stats.fail_ops++;
 					sent = message_create(message_ko, "ERROR: Register failed", 0, NULL);
 					done = TRUE;
 				}
@@ -251,14 +246,11 @@ void *handle_client(void *arg)
 
 			case message_store:			// STORE name len \n data
 				result = handle_store(received, &client);
-				c_stats.total_ops++;
 
 				if (result == TRUE) {
-					c_stats.success_ops++;
 					sent = message_create(message_ok, NULL, 0, NULL);
 					//fprintf(stderr, "Object stored\n");
 				} else {
-					c_stats.fail_ops++;
 					sent = message_create(message_ko, "ERROR: Store failed", 0, NULL);
 				}
 				message_send(fd_c, sent);
@@ -266,14 +258,11 @@ void *handle_client(void *arg)
 
 			case message_retrieve:		// RETRIEVE name \n
 				// data = handle_retrieve(received, client, &len);
-				// c_stats.total_ops++;
 
 				// if (data != NULL) {
-				// 	c_stats.success_ops++;
 				// 	sent = message_create(message_data, NULL, len, data); // DATA len \n data
 				// 	fprintf(stderr, "Object retrieved\n");
 				// } else {
-				// 	c_stats.fail_ops++;
 				// 	sent = message_create(message_ko, "ERROR: Retrieve failed", 0, NULL);
 				// }
 				// message_send(fd_c, sent);
@@ -281,14 +270,11 @@ void *handle_client(void *arg)
 
 			case message_delete:		// DELETE name \n
 				// result = handle_delete(received, &client);
-				// c_stats.total_ops++;
 
 				// if (result == TRUE) {
-				// 	c_stats.success_ops++;
 				// 	sent = message_create(message_ok, NULL, 0, NULL); // DATA len \n data
 				// 	fprintf(stderr, "Object removed\n");
 				// } else {
-				// 	c_stats.fail_ops++;
 				// 	sent = message_create(message_ko, "ERROR: Delete failed", 0, NULL);
 				// }
 				// message_send(fd_c, sent);
@@ -297,8 +283,6 @@ void *handle_client(void *arg)
 			case message_leave:			// LEAVE \n
 				sent = message_create(message_ok, NULL, 0, NULL);
 				message_send(fd_c, sent);
-				c_stats.total_ops++;
-				c_stats.success_ops++;
 				done = TRUE;
 				break;
 
@@ -312,7 +296,6 @@ void *handle_client(void *arg)
 	}
 	// TODO definire la funzione decr_threads() protetta da lock
 	stats_server_decr_client();
-	stats_client_print(c_stats);
 	close(fd_c);
 	return NULL;
 }
@@ -321,8 +304,8 @@ void *handle_client(void *arg)
 int main(int argc, char *argv[])
 {
 	unlink(SOCKNAME);
-	stats_server_create();
 	set_sigaction();
+	stats_server_create();
 
 	_print_stats = FALSE;
 	_running_threads = 1;

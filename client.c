@@ -25,6 +25,7 @@
 #include <string.h>
 #include <common.h>
 #include <protocol.h>
+#include <stats.h>
 
 #define N_OBJECTS 20
 #define MIN_SIZE 100
@@ -74,10 +75,17 @@ int main(int argc, char *argv[])
 	char *dataname = NULL;
 	size_t dataname_size = 7;
 	size_t k = (MAX_SIZE - MIN_SIZE)/N_OBJECTS;
+	client_stats c_stats = stats_client_create();
 
 
 	result = os_connect(name);
-	if (result == FALSE)	exit(EXIT_FAILURE);
+	c_stats.total_ops++;
+	if (result == FALSE) {
+		c_stats.fail_ops++;
+		stats_client_print(c_stats);
+		exit(EXIT_FAILURE);
+	}
+	c_stats.success_ops++;
 
 	switch (test_case) {
 
@@ -90,10 +98,12 @@ int main(int argc, char *argv[])
 				snprintf(dataname, dataname_size, "%02zu.txt", i);
 
 				result = os_store(dataname, data, len);
+				c_stats.total_ops++;
 
 				if (result == FALSE) {
-					// TODO: Gestire il caso
-					printf("rip data %zu\n", i);
+					c_stats.fail_ops++;
+				} else {
+					c_stats.success_ops++;
 				}
 
 				free(data);
@@ -110,11 +120,14 @@ int main(int argc, char *argv[])
 				snprintf(dataname, dataname_size, "%02zu.txt", i);
 
 				data = os_retrieve(dataname);
+				c_stats.total_ops++;
+
 				result = checkData(data, dataname, i);
+
 				if (result == FALSE) {
-					// TODO: Gestire il caso
-					// os_disconnect();
-					exit(EXIT_FAILURE);
+					c_stats.fail_ops++;
+				} else {
+					c_stats.success_ops++;
 				}
 
 				free(data);
@@ -126,9 +139,12 @@ int main(int argc, char *argv[])
 
 		case 3 :		// Cancellazione
 			result = os_delete(dataname);
+			c_stats.total_ops++;
+
 			if (result == FALSE) {
-				os_disconnect();
-				exit(EXIT_FAILURE);
+				c_stats.fail_ops++;
+			} else {
+				c_stats.success_ops++;
 			}
 			break;
 
@@ -139,6 +155,9 @@ int main(int argc, char *argv[])
 
 	printf("disconnect\n");
 	os_disconnect();
+	c_stats.total_ops++;
+	c_stats.success_ops++;
 
+	stats_client_print(c_stats);
 	return 0;
 }
