@@ -1,39 +1,9 @@
-
-// typedef struct {
-// 	int total_ops;
-// 	int success_ops;
-// 	int fail_ops;
-// } client_stats;
-
-// typedef struct {
-// 	int connected_clients;
-// 	int n_objects;
-// 	int total_size;
-// 	pthread_mutex_t mux;
-// } server_stats;
-
 #include "stats.h"
 #include <stdio.h>
 #include <stdlib.h>
 
-client_stats stats_client_create()
-{
-	client_stats c_stats;
-	c_stats.total_ops = 0;
-	c_stats.success_ops = 0;
-	c_stats.fail_ops = 0;
 
-	return c_stats;
-}
-
-void stats_client_print(client_stats c_stats)
-{
-	printf("%d %d %d\n", c_stats.total_ops,
-						 c_stats.success_ops,
-						 c_stats.fail_ops);
-}
-
-void stats_server_create()
+void stats_server_init()
 {
 	server_stats s_stats;
 	s_stats.connected_clients = 0;
@@ -88,9 +58,9 @@ void stats_server_decr_size(int len)
 
 void stats_server_print()
 {
-	printf("Connected clients: %d\t", _s_stats.connected_clients);
-	printf("Number objects: %d\t", _s_stats.n_objects);
-	printf("Total size: %d\n", _s_stats.total_size);
+	fprintf(stdout, "Connected clients: %d\t", _s_stats.connected_clients);
+	fprintf(stdout, "Number objects: %d\t", _s_stats.n_objects);
+	fprintf(stdout, "Total size: %d\n", _s_stats.total_size);
 }
 
 void stats_server_destroy()

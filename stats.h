@@ -1,35 +1,9 @@
-//Responsabile della stampa delle statistiche di client e server
-
-//Client:
-// 	-#operazioni effettuate
-// 	-#operazioni concluse con successo
-// 	-#operazioni fallite
-// 	-...
-
-// Con operazione identifico un unica chiamata di funzione
-// della libreria lato client
-// Considerato che un client di test esegue al massimo
-// - una os_connect
-// - 20+ test
-// - una os_disconnect
-
-
-//Server:
-// 	-#client connessi
-// 	-#oggetti nello store
-// 	-size totale dello store
-// 	-...
-
 #ifndef STATS_H
 #define STATS_H
 
 #include <pthread.h>
+#include <signal.h>
 
-typedef struct {
-	int total_ops;
-	int success_ops;
-	int fail_ops;
-} client_stats;
 
 typedef struct {
 	int connected_clients;
@@ -39,19 +13,10 @@ typedef struct {
 } server_stats;
 
 server_stats _s_stats;
-volatile int _print_stats;
+volatile sig_atomic_t _print_stats;
 
 
-client_stats stats_client_create();
-
-void stats_client_print(client_stats c_stats);
-
-
-//NOTA!
-// chiamare stats_server_incr_client() dopo una connect
-// chiamarestats_server_decr_client() dopo una disconnect! o dopo un'ucita andata male
-
-void stats_server_create();
+void stats_server_init();
 
 void stats_server_incr_client();
 
