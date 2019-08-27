@@ -1,58 +1,123 @@
-// // Client che comunica con il server attraverso la libreria protocol.h
-
-// // Per comunicare manda una richiesta di registrazione.
-// // Successivamente può mandare tre tipi di richieste al server:
-// // 	1.creare e memorizzare oggetti 
-// // 		(20  oggetti di dimensione 100 <= dim <= 100.000 bytes
-// // 		con nomi convenzionali contenenti dati facilmente verificabili)
-// //				TODO:scegliere il contenuto dei files
-// // 	2.recupero di oggetti e verifica della correttezza
-// // 	3.cancellare oggetti
-
-// // Il client riceve da linea di comando
-// // 	-nome del cliente
-// // 	-un numero 1-3 per sapere quale "test" eseguire
-// // Finito il test stampa su stout un rapporto contenente
-// // 	-#operazioni effettuate
-// // 	-#operazioni concluse con successo
-// // 	-#operazioni fallite
-// // 	-...
-// // La stampa del rapporto sarà affidata a stats.h
-// // Terminati i test il client deve disconnetersi.
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <common.h>
 #include <protocol.h>
-#include <stats.h>
 
-#define N_OBJECTS 20
-#define MIN_SIZE 100
-#define MAX_SIZE 100000
-#define MAX_NAME_LEN 255
+#define N_OBJECTS 20		// Number of objects created
+#define MIN_SIZE 100		// Minimum object size
+#define DATANAME_SIZE 7		// Chars needed by the name "xx.txt"
+#define K 4995				// (100000 - 100)/20
+
+typedef struct {
+	int num_success;
+	int num_fails;
+} client_stats;
+
+client_stats _stats;
 
 
-void *createData(size_t len) {
+client_stats initStats()
+{
+	client_stats c_stats;
+	c_stats.num_success = 0;
+	c_stats.num_fails = 0;
+
+	return c_stats;
+}
+
+void printStats()
+{
+	printf("%d %d %d\n", _stats.num_success + _stats.num_fails,
+						 _stats.num_success,
+						 _stats.num_fails);
+}
+
+void updateStats(int result)
+{
+	if (result == TRUE) {
+		_stats.num_success++;
+	} else {
+		_stats.num_fails++;
+	}
+}
+
+char valueAtIndex(size_t i)
+{
+	return (char)(127 - (i % 255));
+}
+
+void *createData(size_t len)
+{
 	char *data = (char *)calloc(len, sizeof(char));
+	check_calloc(data, NULL);
 
 	for (size_t i = 0; i < len; ++i) {
-		//char c = (char)i;
-		data[i] = 'b';
+		data[i] = valueAtIndex(i);
 	}
 	return (void *)data;
 }
 
-int checkData(void *block, char *dataname, size_t len) {
+int checkData(void *block, char *dataname, size_t len)
+{
+	if (block == NULL && len > 0)	return FALSE;
 	char *data = (char *)block;
 
 	for (size_t i = 0; i < len; ++i) {
-		char c = (char)i;
-		if (data[i] != c) {
+		if (data[i] != valueAtIndex(i)) {
 			return FALSE;
 		}
 	}
 	return TRUE;
+}
+
+void makeTest1()
+{
+	for (size_t i = 0; i < N_OBJECTS; ++i) {
+		size_t len = K * i + MIN_SIZE;
+		void *data = createData(len);
+		char *dataname = (char *)calloc(DATANAME_SIZE, sizeof(char));
+		check_calloc(dataname, NULL);
+		snprintf(dataname, DATANAME_SIZE, "%02zu.txt", i);
+
+		updateStats(os_store(dataname, data, len));
+
+		free(data);
+		data = NULL;
+		free(dataname);
+		dataname = NULL;
+	}
+}
+
+void makeTest2()
+{
+	for (size_t i = 0; i < N_OBJECTS; ++i) {
+		char *dataname = (char *)calloc(DATANAME_SIZE, sizeof(char));
+		check_calloc(dataname, NULL);
+		snprintf(dataname, DATANAME_SIZE, "%02zu.txt", i);
+
+		void *data = os_retrieve(dataname);
+		updateStats(checkData(data, dataname, i));
+
+		free(data);
+		data = NULL;
+		free(dataname);
+		dataname = NULL;
+	}
+}
+
+void makeTest3()
+{
+	for (size_t i = 0; i < N_OBJECTS; ++i) {
+		char *dataname = (char *)calloc(DATANAME_SIZE, sizeof(char));
+		check_calloc(dataname, NULL);
+		snprintf(dataname, DATANAME_SIZE, "%02zu.txt", i);
+
+		updateStats(os_delete(dataname));
+
+		free(dataname);
+		dataname = NULL;
+	}
 }
 
 int main(int argc, char *argv[])
@@ -69,95 +134,36 @@ int main(int argc, char *argv[])
 	char *test_str = argv[1];
 	int test_case = strtol(test_str, NULL, 10);
 
-	int result = FALSE;
-	size_t len = 0;
-	void *data = NULL;
-	char *dataname = NULL;
-	size_t dataname_size = 7;
-	size_t k = (MAX_SIZE - MIN_SIZE)/N_OBJECTS;
-	client_stats c_stats = stats_client_create();
+	_stats = initStats();
 
-
-	result = os_connect(name);
-	c_stats.total_ops++;
+	int result = os_connect(name);
 	if (result == FALSE) {
-		c_stats.fail_ops++;
-		stats_client_print(c_stats);
+		_stats.num_fails++;
+		printStats();
 		exit(EXIT_FAILURE);
 	}
-	c_stats.success_ops++;
+	_stats.num_success++;
 
 	switch (test_case) {
 
-		case 1 :		// Memorizzazione
-			for (size_t i = 0; i < N_OBJECTS; ++i) {
-				printf("Sending object number: %zu\n", i);
-				len = k * i + MIN_SIZE;
-				data = createData(len);
-				dataname = (char *)calloc(dataname_size, sizeof(char));
-				snprintf(dataname, dataname_size, "%02zu.txt", i);
-
-				result = os_store(dataname, data, len);
-				c_stats.total_ops++;
-
-				if (result == FALSE) {
-					c_stats.fail_ops++;
-				} else {
-					c_stats.success_ops++;
-				}
-
-				free(data);
-				data = NULL;
-				free(dataname);
-				dataname = NULL;
-			}
+		case 1 :		// Store
+			makeTest1();
 			break;
 
-		case 2 :		// Lettura
-			for (size_t i = 0; i < N_OBJECTS; ++i) {
-				len = k * i + MIN_SIZE;
-				dataname = (char *)calloc(dataname_size, sizeof(char));
-				snprintf(dataname, dataname_size, "%02zu.txt", i);
-
-				data = os_retrieve(dataname);
-				c_stats.total_ops++;
-
-				result = checkData(data, dataname, i);
-
-				if (result == FALSE) {
-					c_stats.fail_ops++;
-				} else {
-					c_stats.success_ops++;
-				}
-
-				free(data);
-				data = NULL;
-				free(dataname);
-				dataname = NULL;
-			}
+		case 2 :		// Retrieve
+			makeTest2();
 			break;
 
-		case 3 :		// Cancellazione
-			result = os_delete(dataname);
-			c_stats.total_ops++;
-
-			if (result == FALSE) {
-				c_stats.fail_ops++;
-			} else {
-				c_stats.success_ops++;
-			}
+		case 3 :		// Delete
+			makeTest3();
 			break;
 
 		default:
-			invalid_operation(NULL);
 			break;
 	}
 
-	printf("disconnect\n");
 	os_disconnect();
-	c_stats.total_ops++;
-	c_stats.success_ops++;
-
-	stats_client_print(c_stats);
+	_stats.num_success++;
+	printStats();
 	return 0;
 }

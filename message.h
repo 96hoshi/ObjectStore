@@ -56,7 +56,7 @@ message *message_receive(int sock);
 // Crea, in base all'operazione, una stringa con i valori
 // contenuti in msg
 // e poi la manda alla sock con una write
-void message_send(int sock, message *m);
+int message_send(int sock, message *m);
 
 // Libera la memoria per
 // name
