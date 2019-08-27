@@ -16,7 +16,7 @@ inline static void check_calloc(void *buff, void (*err_callback)(void))
 {
 	if (buff == NULL) {
 		if (err_callback == NULL) {
-			perror("ERR: calloc error\n");
+			fprintf(stderr,"ERR: calloc error\n");
 		} else {
 			err_callback();
 		}
@@ -27,7 +27,7 @@ inline static void check_calloc(void *buff, void (*err_callback)(void))
 inline static void invalid_operation(void (*err_callback)(void))
 {
 	if (err_callback == NULL) {
-		perror("ERR: invalid operation\n");
+		fprintf(stderr,"ERR: invalid operation\n");
 	} else {
 		err_callback();
 	}
