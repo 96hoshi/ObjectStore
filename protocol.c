@@ -17,10 +17,11 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include "message.h"
-#include "common.h"
+#include <message.h>
+#include <common.h>
 
 static int _fd_skt = -1;
+
 
 static int sendAndReceive(message *sent)
 {
@@ -33,7 +34,7 @@ static int sendAndReceive(message *sent)
 		result = TRUE;
 	}
 	if (received->op == message_ko) {
-		printf("%s\n", received->name);
+		fprintf(stderr,"%s\n", received->name);
 		result = FALSE;
 	}
 
@@ -82,9 +83,13 @@ void *os_retrieve(char *name)
 	message *received = message_receive(_fd_skt);
 
 	if (received->op == message_data) {
-		data = (void *)received->data;
+		data = (void *)calloc(received->len, sizeof(char));
+		check_calloc(data, NULL);
+		memcpy(data, received->data, received->len);
 	}
-
+	if (received->op == message_ko) {
+		fprintf(stderr,"%s\n", received->name);
+	}
 	message_destroy(sent);
 	message_destroy(received);
 	return data;
@@ -100,10 +105,9 @@ int os_delete(char *name)
 int os_disconnect()
 {
 	if (_fd_skt < 0) return FALSE;
-	int result = FALSE;
 
 	message *sent = message_create(message_leave, NULL, 0, NULL);
-	result = sendAndReceive(sent);
+	int result = sendAndReceive(sent);
 	close(_fd_skt);
 	return result;
 }
