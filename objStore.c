@@ -50,14 +50,29 @@
 #include "stats.h"
 #include "common.h"
 
-
 #define PATH_DATA "./data"
 
-volatile int _is_exit = FALSE; //TODO: usare volatile sig_atomic_t?
+volatile sig_atomic_t _is_exit = FALSE;
 
-int _running_threads;
+int _running_threads = 1;
 pthread_mutex_t _running_threads_mux;
 list *_users = NULL;
+
+
+// TODO: make them work!
+// void incr_threads()
+// {
+// 	pthread_mutex_lock(&_running_threads_mux);
+// 	_running_threads++;
+// 	pthread_mutex_unlock(&_running_threads_mux);
+// }
+
+// void decr_threads()
+// {
+// 	pthread_mutex_lock(&_running_threads_mux);
+// 	_running_threads--;
+// 	pthread_mutex_lock(&_running_threads_mux);
+// }
 
 
 void handler(int sig)
@@ -100,46 +115,6 @@ void makeDirectory(char *path)
 	}
 }
 
-// void *retrieveFile(char *dataname, size_t len, char *clientname)
-// {
-// 	FILE *data_file = NULL;
-// 	char *data = (char *)calloc(len, sizeof(char));
-// 	check_calloc(data, NULL);
-// 	char path[MAX_BUFF];
-// 	sprintf(path, "%s/%s/%s", PATH_DATA, clientname, dataname);
-
-// 	// file doesn't exist
-// 	if (access( path, F_OK ) == -1) return NULL;
-
-// 	data_file = fopen(path, "r");
-// 	if(data_file == NULL) return NULL;
-
-// 	fread(data, sizeof(char), len, data_file);
-// 	fclose(data_file);
-// 	return (void *)data;
-// }
-
-
-int handle_register(message *m, user **client)
-{
-	char *name = m->name;
-
-	*client = (user *)list_search(_users, name, user_compare_name);
-	//*client = (n != NULL ? n->info : NULL);
-
-	if (*client == NULL) {
-		char path[MAX_BUFF];
-
-		sprintf(path, "%s/%s", PATH_DATA, name);
-		makeDirectory(path);
-		*client = user_create(name);
-		list_result res = list_insert(_users, *client);
-
-		if (res != list_success) return FALSE;
-	}
-	return TRUE;
-}
-
 int storeFile(void *data, char *dataname, size_t len, char *clientname)
 {
 	FILE *data_file = NULL;
@@ -149,14 +124,11 @@ int storeFile(void *data, char *dataname, size_t len, char *clientname)
 	// file already exists
 	// TODO: to remove, used for testings
 	if (access(path, F_OK) != -1) {
-		printf("%s: File already exists\n", path);
+		fprintf(stderr, "%s: File already exists\n", path);
 		return FALSE;
 	}
 	data_file = fopen(path, "w");
-	if(data_file == NULL) {
-		fprintf(stderr, "%s: Filed fopen\n", path);
-		return FALSE;
-	}
+	if(data_file == NULL) return FALSE;
 
 	fwrite(data, sizeof(char), len, data_file);
 	fclose(data_file);
@@ -164,44 +136,116 @@ int storeFile(void *data, char *dataname, size_t len, char *clientname)
 	return TRUE;
 }
 
-int handle_store(message *m, user **client)
+void *retrieveFile(char *dataname, size_t len, char *clientname)
 {
-	if (*client == NULL) return FALSE;
+	FILE *data_file = NULL;
+	char *data = (char *)calloc(len, sizeof(char));
+	check_calloc(data, NULL);
+	char path[MAX_BUFF];
+	sprintf(path, "%s/%s/%s", PATH_DATA, clientname, dataname);
+
+	// file doesn't exist
+	if (access( path, F_OK ) == -1) return NULL;
+
+	data_file = fopen(path, "r");
+	if(data_file == NULL) return NULL;
+
+	fread(data, sizeof(char), len, data_file);
+	fclose(data_file);
+	fprintf(stderr, "%s: Retrieved file\n", path);
+	return (void *)data;
+}
+
+int deleteFile(char *dataname, char *clientname)
+{
+	char path[MAX_BUFF];
+	sprintf(path, "%s/%s/%s", PATH_DATA, clientname, dataname);
+
+	// file doesn't exist
+	if (access( path, F_OK ) == -1) return FALSE;
+
+	if (remove(path) == 0) {
+		fprintf(stderr, "%s: Removed file\n", path);
+		return TRUE;
+	} else {
+		return FALSE;
+	}
+}
+
+int handle_register(message *m, user **client)
+{
+	char *name = m->name;
+
+	*client = (user *)list_search(_users, name, user_compare_name);
+
+	if (*client == NULL) {
+		char path[MAX_BUFF];
+
+		sprintf(path, "%s/%s", PATH_DATA, name);
+		makeDirectory(path);
+		*client = user_create(name);
+		list_result res = list_insert(_users, *client);
+		if (res != list_success) return FALSE;
+	}
+	return TRUE;
+}
+
+int handle_store(message *m, user *client)
+{
+	if (client == NULL) return FALSE;
 
 	char *dataname = m->name;
 	size_t len = m->len;
 	char *data = m->data;
-	char *name = (*client)->name;
+	char *name = client->name;
 	int result = FALSE;
 
-	//TODO: creazione del file che conterrà data!
 	result = storeFile(data, dataname, len, name);
 	if (result == FALSE) return result;
 
-	list_result res = user_insert_object(*client, dataname, len);
-
+	list_result res = user_insert_object(client, dataname, len);
 	if (res != list_success) return FALSE;
+
 	stats_server_incr_obj();
 	stats_server_incr_size(len);
 	return TRUE;
 }
 
-// void *handle_retrieve(message *m, user *client, size_t *len)
-// {
-// 	char *dataname = m->name;
-// 	char *name = client->name;
+void *handle_retrieve(message *m, user *client, size_t *len)
+{
+	if (client == NULL) return NULL;
 
-// 	object *obj = user_search_object(client, dataname);
-// 	if (obj == NULL) return NULL;
-// 	*len = obj->len;
+	char *dataname = m->name;
+	char *name = client->name;
 
-// 	return retrieveFile(dataname, *len, name);
-// }
+	object *obj = user_search_object(client, dataname);
+	if (obj == NULL) return NULL;
+	*len = obj->len;
 
-// int handle_delete(message *m, user **client)
-// {
+	return retrieveFile(dataname, *len, name);
+}
 
-// }
+int handle_delete(message *m, user *client)
+{
+	if (client == NULL) return FALSE;
+
+	char *dataname = m->name;
+	char *name = client->name;
+
+	object *obj = user_search_object(client, dataname);
+	if (obj == NULL) return FALSE;
+	size_t len = obj->len;
+
+	list_result res = user_delete_object(client, obj);
+	if (res != list_success) return FALSE;
+
+	int result = deleteFile(dataname, name);
+	if (result == FALSE) return FALSE;
+
+	stats_server_decr_obj();
+	stats_server_decr_size(len);
+	return TRUE;
+}
 
 void *handle_client(void *arg)
 {
@@ -214,13 +258,18 @@ void *handle_client(void *arg)
 		message *received = message_receive(fd_c);
 		message *sent = NULL;
 
+		if (received == NULL) {
+			done = TRUE;
+			continue;
+		}
+
 		message_op op = received->op;
-		// void *data = NULL;
-		// size_t len = 0;
+		void *data = NULL;
+		size_t len = 0;
 
 		switch(op) {
 
-			case message_register:		// REGISTER name \n
+			case message_register:						// REGISTER name \n
 				result = handle_register(received, &client);
 
 				if (result == TRUE) {
@@ -231,48 +280,60 @@ void *handle_client(void *arg)
 					sent = message_create(message_ko, "ERROR: Register failed", 0, NULL);
 					done = TRUE;
 				}
-				message_send(fd_c, sent);
+				result = message_send(fd_c, sent);
+				if (result == FALSE) {
+					done = TRUE;
+				}
 				break;
 
-			case message_store:			// STORE name len \n data
-				result = handle_store(received, &client);
+			case message_store:							// STORE name len \n data
+				result = handle_store(received, client);
 
 				if (result == TRUE) {
 					sent = message_create(message_ok, NULL, 0, NULL);
-					//fprintf(stderr, "Object stored\n");
 				} else {
 					sent = message_create(message_ko, "ERROR: Store failed", 0, NULL);
 				}
-				message_send(fd_c, sent);
+				result = message_send(fd_c, sent);
+				if (result == FALSE) {
+					done = TRUE;
+				}
 				break;
 
-			case message_retrieve:		// RETRIEVE name \n
-				// data = handle_retrieve(received, client, &len);
+			case message_retrieve:						// RETRIEVE name \n
+				data = handle_retrieve(received, client, &len);
 
-				// if (data != NULL) {
-				// 	sent = message_create(message_data, NULL, len, data); // DATA len \n data
-				// 	fprintf(stderr, "Object retrieved\n");
-				// } else {
-				// 	sent = message_create(message_ko, "ERROR: Retrieve failed", 0, NULL);
-				// }
-				// message_send(fd_c, sent);
+				if (data != NULL) {
+					sent = message_create(message_data, NULL, len, data); // DATA len \n data
+					fprintf(stderr, "Object retrieved\n");
+				} else {
+					sent = message_create(message_ko, "ERROR: Retrieve failed", 0, NULL);
+				}
+				result = message_send(fd_c, sent);
+				if (result == FALSE) {
+					done = TRUE;
+				}
 				break;
 
-			case message_delete:		// DELETE name \n
-				// result = handle_delete(received, &client);
+			case message_delete:						// DELETE name \n
+				result = handle_delete(received, client);
 
-				// if (result == TRUE) {
-				// 	sent = message_create(message_ok, NULL, 0, NULL); // DATA len \n data
-				// 	fprintf(stderr, "Object removed\n");
-				// } else {
-				// 	sent = message_create(message_ko, "ERROR: Delete failed", 0, NULL);
-				// }
-				// message_send(fd_c, sent);
+				if (result == TRUE) {
+					sent = message_create(message_ok, NULL, 0, NULL); // DATA len \n data
+					fprintf(stderr, "Object removed\n");
+				} else {
+					sent = message_create(message_ko, "ERROR: Delete failed", 0, NULL);
+				}
+				result = message_send(fd_c, sent);
+				if (result == FALSE) {
+					done = TRUE;
+				}
 				break;
 
-			case message_leave:			// LEAVE \n
+			case message_leave:							// LEAVE \n
 				sent = message_create(message_ok, NULL, 0, NULL);
-				message_send(fd_c, sent);
+				result = message_send(fd_c, sent);
+				fprintf(stderr, "Client disconnected\n");
 				done = TRUE;
 				break;
 
@@ -284,7 +345,7 @@ void *handle_client(void *arg)
 		message_destroy(received);
 		message_destroy(sent);
 	}
-	// TODO definire la funzione decr_threads() protetta da lock
+	//decr_threads();
 	stats_server_decr_client();
 	close(fd_c);
 	return NULL;
@@ -295,13 +356,9 @@ int main(int argc, char *argv[])
 {
 	unlink(SOCKNAME);
 	set_sigaction();
-	stats_server_create();
-
-	_print_stats = FALSE;
-	_running_threads = 1;
+	stats_server_init();
 	pthread_mutex_init(&_running_threads_mux, NULL);
 
-	int err = 0;
 	int fd_skt = 0;
 	int fd_c = 0;
 	struct sockaddr_un sa;
@@ -328,12 +385,11 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE); //TODO handle this case
 		}
 		pthread_t worker;
-		err = pthread_create(&worker, NULL, &handle_client, (int *)fd_c);
+		int err = pthread_create(&worker, NULL, &handle_client, (int *)fd_c);
 		if (err != 0) {
-			exit(EXIT_FAILURE);
+			exit(EXIT_FAILURE); //TODO handle this case
 		}
-		// pthread_detach(worker); TODO: verificare se utile
-		// TODO definire la funzione incr_threads() protetta da lock
+		//incr_threads();
 
 		if (_print_stats == TRUE) {
 			stats_server_print();
@@ -345,7 +401,7 @@ int main(int argc, char *argv[])
 	// 	close(fd_skt);
 	// 	exit(EXIT_SUCCESS);
 	// }
-	puts("Server cleaning...\n");
+
 	list_destroy(_users);
 	pthread_mutex_destroy(&_running_threads_mux);
 	stats_server_destroy();

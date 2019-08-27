@@ -15,14 +15,14 @@ objStore : stats.o message.o list.o user.o object.o common.h
 
 protocol.o : protocol.h message.o common.h
 
-user.o : user.h object.o common.h
+user.o : user.h object.o
 
 tests : object.o user.o list.o message.o common.h
 	$(CC) $(CFLAGS) $@.c -o $@ $^ -lm
 
 %.o : %.c %.h
 
-libprotocol.a : protocol.o message.o stats.o common.h
+libprotocol.a : protocol.o message.o common.h
 	$(AR) rvs $@ $^
 
 runclient : client
