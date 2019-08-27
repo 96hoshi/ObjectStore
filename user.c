@@ -32,6 +32,13 @@ list_result user_insert_object(user *u, char *name, size_t len)
 	return list_insert_unsafe(u->objects, obj);
 }
 
+list_result user_delete_object(user *u, object *obj)
+{
+	if (u == NULL) return list_null;
+
+	return list_delete_info_unsafe(u->objects, obj);
+}
+
 int user_compare(void *usr1, void *usr2)
 {
 	user *u1 = (user *)usr1;

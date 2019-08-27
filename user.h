@@ -36,6 +36,10 @@ object *user_search_object(user *u, void *name);
 //   e lunghezza len nella lista objs
 list_result user_insert_object(user *u, char *name, size_t len);
 
+// - Elimina con una funzione di libreria l'oggetto di nome name
+//   nella lista objs
+list_result user_delete_object(user *u, object *obj);
+
 // - Confronta un user con un atro user
 int user_compare(void *usr1, void *usr2);
 
