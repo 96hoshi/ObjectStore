@@ -294,6 +294,7 @@ int message_send(int sock, message *m)
 			offset = snprintf(buffer, size + 1, "%s %zu \n ", ops[op], len);
 			buffer[offset] = ' ';
 			memcpy(buffer + offset, data, len);
+			free(data);
 			break;
 
 		case message_leave:							// "LEAVE \n"
