@@ -4,10 +4,10 @@
 #include <common.h>
 #include <protocol.h>
 
-#define N_OBJECTS		20		// Number of objects created
-#define MIN_SIZE		100		// Minimum object size
-#define DATANAME_SIZE	7		// Chars needed by the name "xx.txt"
-#define K				4995	// (100000 - 100)/20
+#define N_OBJECTS       20		// Number of objects created
+#define MIN_SIZE        100		// Minimum object size
+#define DATANAME_SIZE   7		// Chars needed by the name "xx.txt"
+#define K               4995	// (100000 - 100)/20
 
 typedef struct {
 	int num_success;
@@ -73,27 +73,27 @@ int checkData(void *block, size_t len)
 
 void makeTest1()
 {
+	char dataname[DATANAME_SIZE];
+
 	for (size_t i = 0; i < N_OBJECTS; ++i) {
 		size_t len = K * i + MIN_SIZE;
 		void *data = createData(len);
-		char dataname[DATANAME_SIZE];
 		snprintf(dataname, DATANAME_SIZE, "%02zu.txt", i);
 
 		updateStats(os_store(dataname, data, len));
-
-		free(data);
-		data = NULL;
 	}
 }
 
 void makeTest2()
 {
+	char dataname[DATANAME_SIZE];
+
 	for (size_t i = 0; i < N_OBJECTS; ++i) {
-		char dataname[DATANAME_SIZE];
 		snprintf(dataname, DATANAME_SIZE, "%02zu.txt", i);
+		size_t len = K * i + MIN_SIZE;
 
 		void *data = os_retrieve(dataname);
-		updateStats(checkData(data, i));
+		updateStats(checkData(data, len));
 
 		free(data);
 		data = NULL;
@@ -102,12 +102,12 @@ void makeTest2()
 
 void makeTest3()
 {
+	char dataname[DATANAME_SIZE];
+
 	for (size_t i = 0; i < N_OBJECTS; ++i) {
-		char dataname[DATANAME_SIZE];
 		snprintf(dataname, DATANAME_SIZE, "%02zu.txt", i);
 
 		updateStats(os_delete(dataname));
-
 	}
 }
 
