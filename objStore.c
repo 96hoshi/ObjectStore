@@ -60,19 +60,19 @@ list *_users = NULL;
 
 
 // TODO: make them work!
-// void incr_threads()
-// {
-// 	pthread_mutex_lock(&_running_threads_mux);
-// 	_running_threads++;
-// 	pthread_mutex_unlock(&_running_threads_mux);
-// }
+void incr_threads()
+{
+	pthread_mutex_lock(&_running_threads_mux);
+	_running_threads++;
+	pthread_mutex_unlock(&_running_threads_mux);
+}
 
-// void decr_threads()
-// {
-// 	pthread_mutex_lock(&_running_threads_mux);
-// 	_running_threads--;
-// 	pthread_mutex_lock(&_running_threads_mux);
-// }
+void decr_threads()
+{
+	pthread_mutex_lock(&_running_threads_mux);
+	_running_threads--;
+	pthread_mutex_unlock(&_running_threads_mux);
+}
 
 
 void handler(int sig)
@@ -340,7 +340,7 @@ void *handle_client(void *arg)
 		message_destroy(received);
 		message_destroy(sent);
 	}
-	//decr_threads();
+	decr_threads();
 	stats_server_decr_client();
 	close(fd_c);
 	return NULL;
@@ -380,11 +380,12 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE); //TODO handle this case
 		}
 		pthread_t worker;
-		int err = pthread_create(&worker, NULL, &handle_client, (int *)fd_c);
-		if (err != 0) {
+		if (pthread_create(&worker, NULL, &handle_client, (int *)fd_c) != 0) {
 			exit(EXIT_FAILURE); //TODO handle this case
 		}
-		//incr_threads();
+		incr_threads();
+
+		pthread_detach(worker);
 
 		if (_print_stats == TRUE) {
 			stats_server_print();
