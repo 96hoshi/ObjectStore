@@ -52,18 +52,6 @@ static size_t numberOfDigits(size_t val)
 	return (size_t)(log10(val) + 1);
 }
 
-
-// static void message_print(message *m) {
-// 	printf("m->op = %s\n", ops[m->op]);
-// 	printf("m->name = %s\n", (m->name != NULL ? m->name : "NULL"));
-// 	printf("m->len = %zu\n", m->len);
-// 	printf("m->data = [");
-// 	for (size_t i = 0; i < m->len; ++i) {
-// 		printf("%c", ((char *)m->data)[i]);
-// 	}
-// 	printf("]\n");
-// }
-
 static int myWrite(int sock, char *buffer, size_t len) {
 	ssize_t n = 0;
 	ssize_t written = 0;
@@ -71,7 +59,7 @@ static int myWrite(int sock, char *buffer, size_t len) {
 	while ((len - written) > 0) {
 		n = write(sock, buffer + written, len - written);
 		if (n < 0) {
-			 if (errno == EINTR) {
+			if (errno == EINTR) {
 				continue;
 			}
 			return FALSE;
@@ -82,12 +70,54 @@ static int myWrite(int sock, char *buffer, size_t len) {
 	return TRUE;
 }
 
-static int read_header(int sock, char *buffer, size_t buffer_size, size_t *posDelimiter, size_t *nRead)
+static char *read_header(int sock, char *buffer, size_t *buffer_size, size_t *pos_delimiter, size_t *nread)
 {
-	ssize_t p = -1;	// local position delimiter
-	size_t r = 0;	// local number of char already read
+	char *b = buffer;			// local buffer pointer
+	size_t s = *buffer_size;	// local buffer size
+	size_t r = 0;				// local number of bytes already read
+	ssize_t p = -1;				// local position delimiter
 
 	while (p < 0) {
+
+		if (r == s) {
+			s = s * 2;
+			char *b_new = realloc(b, s);
+			if (b_new == NULL) {
+				free(b);
+				return NULL;
+			}
+			b = b_new;
+		}
+
+		ssize_t n = read(sock, b + r, s - r);
+
+		// closed the connection
+		if (n == 0) return NULL;
+
+		if (n < 0) {
+			// handle delivery of a signal
+			if (errno == EINTR) {
+				continue;
+			}
+			return NULL;
+		}
+
+		p = getPosDelimiter(buffer + r, s, '\n');
+		r += n;
+	}
+
+	// update values
+	*buffer_size = s;
+	*pos_delimiter = p;
+	*nread = r;
+
+	return b;
+}
+
+static int read_data(int sock, char *buffer, size_t buffer_size)
+{
+	size_t r = 0;
+	while (r < buffer_size) {
 		ssize_t n = read(sock, buffer + r, buffer_size - r);
 
 		// handle connection closed
@@ -103,35 +133,7 @@ static int read_header(int sock, char *buffer, size_t buffer_size, size_t *posDe
 			return FALSE;
 		}
 
-		p = getPosDelimiter(buffer + r, buffer_size, '\n');
 		r += n;
-	}
-
-	*posDelimiter = p;
-	*nRead = r;
-
-	return TRUE;
-}
-
-static int read_data(int sock, char *buffer, size_t buffer_size, size_t nRead)
-{
-	while (nRead < buffer_size) {
-		ssize_t n = read(sock, buffer + nRead, buffer_size - nRead);
-
-		// handle connection closed
-		if (n == 0) {
-			return FALSE;
-		}
-
-		if (n < 0) {
-			// handle delivery of a signal
-			if (errno == EINTR) {
-				continue;
-			}
-			return FALSE;
-		}
-
-		nRead += n;
 	}
 
 	return TRUE;
@@ -143,7 +145,8 @@ message *message_create(message_op op,
 						void *data)
 {
 	message *m = (message *)calloc(1, sizeof(message));
-	check_calloc(m, NULL);
+	if (m == NULL) return NULL;
+
 	m->buff = NULL;
 	m->op = op;
 	m->name = name;
@@ -155,32 +158,28 @@ message *message_create(message_op op,
 
 message *message_receive(int sock)
 {
-	size_t buffer_size = MAX_BUFF; // MAX_BUFF must be at least 1024
+	size_t header_size = MAX_BUFF;
+	char *header = (char *)calloc(header_size, sizeof(char));
+	if (header == NULL) return NULL;
 	char *lasts = NULL;
-	char *buffer = (char *)calloc(buffer_size, sizeof(char));
 
-	size_t posDelimiter = 0;
-	size_t nRead = 0;
+	size_t pos_delimiter = 0;
+	size_t nread = 0;
 
-	// read from socket until it found '\n' in the buffer.
-	// Note: the buffer may contain more data after '\n'
-	if (read_header(sock, buffer, buffer_size, &posDelimiter, &nRead) == FALSE) {
-		free(buffer);
-		return NULL;
-	}
+	header = read_header(sock, header, &header_size, &pos_delimiter, &nread);
+	if (header == NULL) return NULL;
 
 	message_op op = message_err;
 	char *name = NULL;
 	size_t len = 0;
 	char *data = NULL;
 
-	int offset_name = 0;
-	int offset_data = 0;
-
 	char *len_str = NULL;
 	char *op_str = NULL;
 
-	op_str = strtok_r(buffer, " ", &lasts);
+	ssize_t offset = 0;
+
+	op_str = strtok_r(header, " ", &lasts);
 	op = getOp(op_str);
 
 	switch(op) {
@@ -191,28 +190,30 @@ message *message_receive(int sock)
 			break;
 
 		case message_store:							// STORE name len \n data
-			offset_name = strtok_r(NULL, " ", &lasts) - buffer;
-		case message_data:
+			name = strtok_r(NULL, " ", &lasts);
+		case message_data:							// "DATA len \n data"
 			len_str = strtok_r(NULL, " ", &lasts);
 			len = strtol(len_str, NULL, 10);
-			offset_data = posDelimiter + 2;
 
-			buffer_size = offset_data + len;
-			if (buffer_size > MAX_BUFF) {
-				buffer = realloc(buffer, buffer_size);
-				if (buffer == NULL) {
-					free(buffer);
-					return NULL;
-				}
-			}
-			if (read_data(sock, buffer, buffer_size, nRead) == FALSE) {
-				free(buffer);
+			data = (char *)calloc(len, sizeof(char));
+			if (data == NULL) {
+				free(header);
 				return NULL;
 			}
 
-			name = buffer + offset_name;
-			data = buffer + offset_data;
+			// get the number of data-bytes already read
+			offset = nread - (pos_delimiter + 2);
+			// copy the data-bytes already read into data
+			memcpy(data, header + pos_delimiter + 2, offset);
 
+			// if there is more to read
+			if (len > offset) {
+				if (read_data(sock, data + offset, len - offset) == FALSE) {
+					free(header);
+					free(data);
+					return NULL;
+				}
+			}
 			break;
 
 		case message_leave:							// LEAVE \n
@@ -225,19 +226,18 @@ message *message_receive(int sock)
 
 		case message_err:
 		default:
-			invalid_operation(NULL);
-			break;
+			return NULL;
 	}
 
 	message *m = message_create(op, name, len, data);
-	m->buff = buffer;
+	m->buff = header;
 
 	return m;
 }
 
 int message_send(int sock, message *m)
 {
-	char *buffer = NULL;
+	char *header = NULL;
 	message_op op = m->op;
 	char *name = m->name;
 	size_t len = m->len;
@@ -249,78 +249,71 @@ int message_send(int sock, message *m)
 	size_t len_digits = 0;
 	size_t offset = 0;
 
+	len_op = strlen(ops[op]);
+
 	switch (op) {
 
 		case message_register:						// "REGISTER nome \n"
 		case message_retrieve:						// "RETRIEVE nome \n"
 		case message_delete:						// "DELETE nome \n"
-			len_op = strlen(ops[op]);
 			len_name = strlen(name);
 			// op + space + name + space + '\n'
 			size = len_op + 1 + len_name + 1 + 1;
 
-			// size + '\0' needed by snprintf
-			buffer = (char *)calloc(size + 1, sizeof(char));
-			check_calloc(buffer, NULL);
-			snprintf(buffer, size + 1, "%s %s \n", ops[op], name);
+			header = (char *)calloc(size + 1, sizeof(char));
+			if (header == NULL) {
+				return FALSE;
+			}
+			snprintf(header, size + 1, "%s %s \n", ops[op], name);
 			break;
 
 		case message_store:							// "STORE name len \n data"
-			len_op = strlen(ops[op]);
 			len_name = strlen(name);
 			len_digits = numberOfDigits(len);
+			// op + space + name + space + len + space + '\n' + space
+			size = len_op + 1 + len_name + 1 + len_digits + 1 + 1 + 1;
 
-			// op + space + name + space + len + space + '\n' + space + dataSize
-			size = len_op + 1 + len_name + 1 + len_digits + 1 + 1 + 1 + len;
-
-			// size + '\0' needed by snprintf
-			buffer = (char *)calloc(size + 1, sizeof(char));
-			check_calloc(buffer, NULL);
-			offset = snprintf(buffer, size + 1, "%s %s %zu \n ", ops[op], name, len);
-			buffer[offset] = ' ';
-			memcpy(buffer + offset, data, len);
+			header = (char *)calloc(size + 1, sizeof(char));
+			if (header == NULL) {
+				return FALSE;
+			}
+			offset = snprintf(header, size + 1, "%s %s %zu \n ", ops[op], name, len);
 			break;
 
 		case message_data:							// "DATA len \n data"
-			len_op = strlen(ops[op]);
 			len_digits = numberOfDigits(len);
-
 			// op + space + len + space + '\n' + space + dataSize
-			size = len_op + 1 + len_digits + 1 + 1 + 1 + len;
+			size = len_op + 1 + len_digits + 1 + 1 + 1;
 
-			// size + '\0' needed by snprintf
-			buffer = (char *)calloc(size + 1, sizeof(char));
-			check_calloc(buffer, NULL);
-			offset = snprintf(buffer, size + 1, "%s %zu \n ", ops[op], len);
-			buffer[offset] = ' ';
-			memcpy(buffer + offset, data, len);
-			free(data);
+			header = (char *)calloc(size + 1, sizeof(char));
+			if (header == NULL) {
+				return FALSE;
+			}
+			offset = snprintf(header, size + 1, "%s %zu \n ", ops[op], len);
 			break;
 
 		case message_leave:							// "LEAVE \n"
 		case message_ok:							// "OK \n"
-			len_op = strlen(ops[op]);
-
 			// op + space + '\n'
 			size = len_op + 1 + 1;
 
-			// size + '\0' needed by snprintf
-			buffer = (char *)calloc(size + 1, sizeof(char));
-			check_calloc(buffer, NULL);
-			snprintf(buffer, size + 1, "%s \n", ops[op]);
+			header = (char *)calloc(size + 1, sizeof(char));
+			if (header == NULL) {
+				return FALSE;
+			}
+			snprintf(header, size + 1, "%s \n", ops[op]);
 			break;
 
 		case message_ko:							// "KO message \n"
-			len_op = strlen(ops[op]);
 			len_name = (name != NULL ? strlen(name) : 0);
-
 			// op + space + message + space + '\n'
 			size = len_op + 1 + len_name + 1 + 1;
 
-			// size + '\0' needed by snprintf
-			buffer = (char *)calloc(size + 1, sizeof(char));
-			check_calloc(buffer, NULL);
-			snprintf(buffer, size + 1, "%s %s \n", ops[op], name);
+			header = (char *)calloc(size + 1, sizeof(char));
+			if (header == NULL) {
+				return FALSE;
+			}
+			snprintf(header, size + 1, "%s %s \n", ops[op], name);
 			break;
 
 		case message_err:
@@ -329,13 +322,24 @@ int message_send(int sock, message *m)
 			break;
 	}
 
-	m->buff = buffer;
+	m->buff = header;
 
-	return myWrite(sock, buffer, size);
+	// send header
+	if (myWrite(sock, header, size) == FALSE) {
+		return FALSE;
+	}
+
+	// send data if needed
+	if (op == message_store || op == message_data) {
+		return myWrite(sock, data, len);
+	}
+	return TRUE;
 }
 
 void message_destroy(message *m)
 {
-	free(m->buff);
+	if (m == NULL) return;
+	if (m->buff != NULL) free(m->buff);
+	if (m->data != NULL) free(m->data);
 	free(m);
 }
