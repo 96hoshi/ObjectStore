@@ -145,10 +145,16 @@ void *retrieveFile(char *dataname, size_t len, char *clientname)
 	sprintf(path, "%s/%s/%s", PATH_DATA, clientname, dataname);
 
 	// file doesn't exist
-	if (access( path, F_OK ) == -1) return NULL;
+	if (access( path, F_OK ) == -1) {
+		free(data);
+		return NULL;
+	}
 
 	data_file = fopen(path, "r");
-	if(data_file == NULL) return NULL;
+	if(data_file == NULL) {
+		free(data);
+		return NULL;
+	}
 
 	fread(data, sizeof(char), len, data_file);
 	fclose(data_file);
@@ -198,10 +204,8 @@ int handle_store(message *m, user *client)
 	size_t len = m->len;
 	char *data = m->data;
 	char *name = client->name;
-	int result = FALSE;
 
-	result = storeFile(data, dataname, len, name);
-	if (result == FALSE) return result;
+	if (storeFile(data, dataname, len, name) == FALSE) return FALSE;
 
 	list_result res = user_insert_object(client, dataname, len);
 	if (res != list_success) return FALSE;
@@ -239,8 +243,7 @@ int handle_delete(message *m, user *client)
 	list_result res = user_delete_object(client, obj);
 	if (res != list_success) return FALSE;
 
-	int result = deleteFile(dataname, name);
-	if (result == FALSE) return FALSE;
+	if (deleteFile(dataname, name) == FALSE) return FALSE;
 
 	stats_server_decr_obj();
 	stats_server_decr_size(len);
@@ -252,7 +255,6 @@ void *handle_client(void *arg)
 	int fd_c = (int)arg;
 	user *client = NULL;
 	int done = FALSE;
-	int result = FALSE;
 
 	while (!done && !_is_exit) {
 		message *received = message_receive(fd_c);
@@ -270,9 +272,8 @@ void *handle_client(void *arg)
 		switch(op) {
 
 			case message_register:						// REGISTER name \n
-				result = handle_register(received, &client);
 
-				if (result == TRUE) {
+				if (handle_register(received, &client) == TRUE) {
 					stats_server_incr_client();
 					sent = message_create(message_ok, NULL, 0, NULL);
 					fprintf(stderr, "Client connected\n");
@@ -280,22 +281,19 @@ void *handle_client(void *arg)
 					sent = message_create(message_ko, "ERROR: Register failed", 0, NULL);
 					done = TRUE;
 				}
-				result = message_send(fd_c, sent);
-				if (result == FALSE) {
+				if (message_send(fd_c, sent) == FALSE) {
 					done = TRUE;
 				}
 				break;
 
 			case message_store:							// STORE name len \n data
-				result = handle_store(received, client);
 
-				if (result == TRUE) {
+				if (handle_store(received, client) == TRUE) {
 					sent = message_create(message_ok, NULL, 0, NULL);
 				} else {
 					sent = message_create(message_ko, "ERROR: Store failed", 0, NULL);
 				}
-				result = message_send(fd_c, sent);
-				if (result == FALSE) {
+				if (message_send(fd_c, sent) == FALSE) {
 					done = TRUE;
 				}
 				break;
@@ -304,35 +302,32 @@ void *handle_client(void *arg)
 				data = handle_retrieve(received, client, &len);
 
 				if (data != NULL) {
-					sent = message_create(message_data, NULL, len, data); // DATA len \n data
+					sent = message_create(message_data, NULL, len, data); //TODO: memory leak per data
 					fprintf(stderr, "Object retrieved\n");
 				} else {
 					sent = message_create(message_ko, "ERROR: Retrieve failed", 0, NULL);
 				}
-				result = message_send(fd_c, sent);
-				if (result == FALSE) {
+				if (message_send(fd_c, sent) == FALSE) {
 					done = TRUE;
 				}
 				break;
 
 			case message_delete:						// DELETE name \n
-				result = handle_delete(received, client);
 
-				if (result == TRUE) {
-					sent = message_create(message_ok, NULL, 0, NULL); // DATA len \n data
+				if (handle_delete(received, client) == TRUE) {
+					sent = message_create(message_ok, NULL, 0, NULL);
 					fprintf(stderr, "Object removed\n");
 				} else {
 					sent = message_create(message_ko, "ERROR: Delete failed", 0, NULL);
 				}
-				result = message_send(fd_c, sent);
-				if (result == FALSE) {
+				if (message_send(fd_c, sent) == FALSE) {
 					done = TRUE;
 				}
 				break;
 
 			case message_leave:							// LEAVE \n
 				sent = message_create(message_ok, NULL, 0, NULL);
-				result = message_send(fd_c, sent);
+				message_send(fd_c, sent);
 				fprintf(stderr, "Client disconnected\n");
 				done = TRUE;
 				break;
