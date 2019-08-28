@@ -4,10 +4,10 @@
 #include <common.h>
 #include <protocol.h>
 
-#define N_OBJECTS 20		// Number of objects created
-#define MIN_SIZE 100		// Minimum object size
-#define DATANAME_SIZE 7		// Chars needed by the name "xx.txt"
-#define K 4995				// (100000 - 100)/20
+#define N_OBJECTS		20		// Number of objects created
+#define MIN_SIZE		100		// Minimum object size
+#define DATANAME_SIZE	7		// Chars needed by the name "xx.txt"
+#define K				4995	// (100000 - 100)/20
 
 typedef struct {
 	int num_success;
@@ -58,7 +58,7 @@ void *createData(size_t len)
 	return (void *)data;
 }
 
-int checkData(void *block, char *dataname, size_t len)
+int checkData(void *block, size_t len)
 {
 	if (block == NULL && len > 0)	return FALSE;
 	char *data = (char *)block;
@@ -76,47 +76,38 @@ void makeTest1()
 	for (size_t i = 0; i < N_OBJECTS; ++i) {
 		size_t len = K * i + MIN_SIZE;
 		void *data = createData(len);
-		char *dataname = (char *)calloc(DATANAME_SIZE, sizeof(char));
-		check_calloc(dataname, NULL);
+		char dataname[DATANAME_SIZE];
 		snprintf(dataname, DATANAME_SIZE, "%02zu.txt", i);
 
 		updateStats(os_store(dataname, data, len));
 
 		free(data);
 		data = NULL;
-		free(dataname);
-		dataname = NULL;
 	}
 }
 
 void makeTest2()
 {
 	for (size_t i = 0; i < N_OBJECTS; ++i) {
-		char *dataname = (char *)calloc(DATANAME_SIZE, sizeof(char));
-		check_calloc(dataname, NULL);
+		char dataname[DATANAME_SIZE];
 		snprintf(dataname, DATANAME_SIZE, "%02zu.txt", i);
 
 		void *data = os_retrieve(dataname);
-		updateStats(checkData(data, dataname, i));
+		updateStats(checkData(data, i));
 
 		free(data);
 		data = NULL;
-		free(dataname);
-		dataname = NULL;
 	}
 }
 
 void makeTest3()
 {
 	for (size_t i = 0; i < N_OBJECTS; ++i) {
-		char *dataname = (char *)calloc(DATANAME_SIZE, sizeof(char));
-		check_calloc(dataname, NULL);
+		char dataname[DATANAME_SIZE];
 		snprintf(dataname, DATANAME_SIZE, "%02zu.txt", i);
 
 		updateStats(os_delete(dataname));
 
-		free(dataname);
-		dataname = NULL;
 	}
 }
 
@@ -136,8 +127,7 @@ int main(int argc, char *argv[])
 
 	_stats = initStats();
 
-	int result = os_connect(name);
-	if (result == FALSE) {
+	if (os_connect(name) == FALSE) {
 		_stats.num_fails++;
 		printStats();
 		exit(EXIT_FAILURE);
