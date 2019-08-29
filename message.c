@@ -52,7 +52,7 @@ static size_t numberOfDigits(size_t val)
 	return (size_t)(log10(val) + 1);
 }
 
-static int myWrite(int sock, char *buffer, size_t len) {
+static int myWrite(long sock, char *buffer, size_t len) {
 	ssize_t n = 0;
 	ssize_t written = 0;
 
@@ -70,7 +70,7 @@ static int myWrite(int sock, char *buffer, size_t len) {
 	return TRUE;
 }
 
-static char *read_header(int sock, char *buffer, size_t *buffer_size, size_t *pos_delimiter, size_t *nread)
+static char *read_header(long sock, char *buffer, size_t *buffer_size, size_t *pos_delimiter, size_t *nread)
 {
 	char *b = buffer;			// local buffer pointer
 	size_t s = *buffer_size;	// local buffer size
@@ -114,7 +114,7 @@ static char *read_header(int sock, char *buffer, size_t *buffer_size, size_t *po
 	return b;
 }
 
-static int read_data(int sock, char *buffer, size_t buffer_size)
+static int read_data(long sock, char *buffer, size_t buffer_size)
 {
 	size_t r = 0;
 	while (r < buffer_size) {
@@ -139,10 +139,7 @@ static int read_data(int sock, char *buffer, size_t buffer_size)
 	return TRUE;
 }
 
-message *message_create(message_op op,
-						char *name,
-						size_t len,
-						void *data)
+message *message_create(message_op op, char *name, size_t len, void *data)
 {
 	message *m = (message *)calloc(1, sizeof(message));
 	if (m == NULL) return NULL;
@@ -156,7 +153,7 @@ message *message_create(message_op op,
 	return m;
 }
 
-message *message_receive(int sock)
+message *message_receive(long sock)
 {
 	size_t header_size = MAX_BUFF;
 	char *header = (char *)calloc(header_size, sizeof(char));
@@ -235,7 +232,7 @@ message *message_receive(int sock)
 	return m;
 }
 
-int message_send(int sock, message *m)
+int message_send(long sock, message *m)
 {
 	char *header = NULL;
 	message_op op = m->op;
@@ -334,6 +331,14 @@ int message_send(int sock, message *m)
 		return myWrite(sock, data, len);
 	}
 	return TRUE;
+}
+
+void * messasge_extract_data(message * m)
+{
+	if (m == NULL) return NULL;
+	void * data = m->data;
+	m->data = NULL;
+	return data;
 }
 
 void message_destroy(message *m)
