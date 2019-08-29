@@ -70,7 +70,7 @@ static int myWrite(long sock, char *buffer, size_t len) {
 	return TRUE;
 }
 
-static char *read_header(long sock, char *buffer, size_t *buffer_size, size_t *pos_delimiter, size_t *nread)
+static char *readHeader(long sock, char *buffer, size_t *buffer_size, size_t *pos_delimiter, size_t *nread)
 {
 	char *b = buffer;			// local buffer pointer
 	size_t s = *buffer_size;	// local buffer size
@@ -114,7 +114,7 @@ static char *read_header(long sock, char *buffer, size_t *buffer_size, size_t *p
 	return b;
 }
 
-static int read_data(long sock, char *buffer, size_t buffer_size)
+static int readData(long sock, char *buffer, size_t buffer_size)
 {
 	size_t r = 0;
 	while (r < buffer_size) {
@@ -138,6 +138,7 @@ static int read_data(long sock, char *buffer, size_t buffer_size)
 
 	return TRUE;
 }
+
 
 message *message_create(message_op op, char *name, size_t len, void *data)
 {
@@ -163,7 +164,7 @@ message *message_receive(long sock)
 	size_t pos_delimiter = 0;
 	size_t nread = 0;
 
-	header = read_header(sock, header, &header_size, &pos_delimiter, &nread);
+	header = readHeader(sock, header, &header_size, &pos_delimiter, &nread);
 	if (header == NULL) return NULL;
 
 	message_op op = message_err;
@@ -205,7 +206,7 @@ message *message_receive(long sock)
 
 			// if there is more to read
 			if (len > offset) {
-				if (read_data(sock, data + offset, len - offset) == FALSE) {
+				if (readData(sock, data + offset, len - offset) == FALSE) {
 					free(header);
 					free(data);
 					return NULL;
@@ -244,7 +245,6 @@ int message_send(long sock, message *m)
 	size_t len_op = 0;
 	size_t len_name = 0;
 	size_t len_digits = 0;
-	size_t offset = 0;
 
 	len_op = strlen(ops[op]);
 
@@ -274,7 +274,7 @@ int message_send(long sock, message *m)
 			if (header == NULL) {
 				return FALSE;
 			}
-			offset = snprintf(header, size + 1, "%s %s %zu \n ", ops[op], name, len);
+			snprintf(header, size + 1, "%s %s %zu \n ", ops[op], name, len);
 			break;
 
 		case message_data:							// "DATA len \n data"
@@ -286,7 +286,7 @@ int message_send(long sock, message *m)
 			if (header == NULL) {
 				return FALSE;
 			}
-			offset = snprintf(header, size + 1, "%s %zu \n ", ops[op], len);
+			snprintf(header, size + 1, "%s %zu \n ", ops[op], len);
 			break;
 
 		case message_leave:							// "LEAVE \n"
