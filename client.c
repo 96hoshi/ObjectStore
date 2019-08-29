@@ -4,10 +4,10 @@
 #include <common.h>
 #include <protocol.h>
 
-#define N_OBJECTS       20		// Number of objects created
-#define MIN_SIZE        100		// Minimum object size
-#define DATANAME_SIZE   7		// Chars needed by the name "xx.txt"
-#define K               4995	// (100000 - 100)/20
+#define N_OBJECTS		20		// Number of objects created
+#define MIN_SIZE		100		// Minimum object size
+#define DATANAME_SIZE	7		// Chars needed by the name "xx.txt"
+#define K				4995	// (100000 - 100)/20
 
 typedef struct {
 	int num_success;
@@ -81,6 +81,8 @@ void makeTest1()
 		snprintf(dataname, DATANAME_SIZE, "%02zu.txt", i);
 
 		updateStats(os_store(dataname, data, len));
+
+		free(data);
 	}
 }
 
@@ -96,7 +98,6 @@ void makeTest2()
 		updateStats(checkData(data, len));
 
 		free(data);
-		data = NULL;
 	}
 }
 
