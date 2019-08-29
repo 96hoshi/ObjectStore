@@ -20,7 +20,7 @@
 #include <message.h>
 #include <common.h>
 
-static int _fd_skt = -1;
+static long _fd_skt = -1;
 
 
 static int sendAndReceive(message *sent)
@@ -38,6 +38,9 @@ static int sendAndReceive(message *sent)
 		result = FALSE;
 	}
 
+	if (sent->op == message_store) {
+		messasge_extract_data(sent); // avoid to release not owned data
+	}
 	message_destroy(sent);
 	message_destroy(received);
 
@@ -83,9 +86,7 @@ void *os_retrieve(char *name)
 	message *received = message_receive(_fd_skt);
 
 	if (received->op == message_data) {
-		data = (void *)calloc(received->len, sizeof(char));
-		check_calloc(data, NULL);
-		memcpy(data, received->data, received->len);
+		data = messasge_extract_data(received);
 	}
 	if (received->op == message_ko) {
 		fprintf(stderr,"%s\n", received->name);
