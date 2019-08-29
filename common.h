@@ -4,13 +4,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define TRUE  1
-#define FALSE 0
+#define TRUE			1
+#define FALSE			0
 
-#define MAX_BUFF 1024
-
+#define MAX_BUFF		1024
 #define UNIX_PATH_MAX	108
 #define SOCKNAME		"./objstore.sock"
+#define PATH_DATA		"./data"
+
 
 inline static void check_calloc(void *buff, void (*err_callback)(void))
 {
