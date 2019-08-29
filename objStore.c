@@ -59,7 +59,6 @@ pthread_mutex_t _running_threads_mux;
 list *_users = NULL;
 
 
-// TODO: make them work!
 void incr_threads()
 {
 	pthread_mutex_lock(&_running_threads_mux);
@@ -74,15 +73,22 @@ void decr_threads()
 	pthread_mutex_unlock(&_running_threads_mux);
 }
 
-
 void handler(int sig)
 {
-	if (sig == SIGUSR1) {
-		_print_stats = TRUE;
-	}
+	switch(sig){
 
-	if (sig == SIGINT) {
-		_is_exit = TRUE;
+		case SIGUSR1:
+			_print_stats = TRUE;
+			break;
+
+		case SIGINT:
+		case SIGTERM:
+		case SIGQUIT:
+			_is_exit = TRUE;
+			break;
+
+		default:
+			break;
 	}
 }
 
@@ -93,15 +99,24 @@ void set_sigaction()
 	sigemptyset(&sa.sa_mask);
 	sigaddset(&sa.sa_mask, SIGUSR1);
 	sigaddset(&sa.sa_mask, SIGINT);
+	sigaddset(&sa.sa_mask, SIGTERM);
+	sigaddset(&sa.sa_mask, SIGQUIT);
 	sa.sa_handler = handler;
 
 	if (sigaction(SIGUSR1, &sa, NULL) == -1) {
 		perror("Signal error SIGUSR1");
 		exit(EXIT_FAILURE);
 	}
-
 	if (sigaction(SIGINT, &sa, NULL) == -1) {
 		perror("Signal error SIGINT");
+		exit(EXIT_FAILURE);
+	}
+	if (sigaction(SIGTERM, &sa, NULL) == -1) {
+		perror("Signal error SIGTERM");
+		exit(EXIT_FAILURE);
+	}
+	if (sigaction(SIGQUIT, &sa, NULL) == -1) {
+		perror("Signal error SIGQUIT");
 		exit(EXIT_FAILURE);
 	}
 }
@@ -346,6 +361,18 @@ void *handle_client(void *arg)
 	return NULL;
 }
 
+void spawn_thread(int fd_c){
+
+	sigset_t thread_set;
+	sigemptyset(&thread_set);
+
+	pthread_sigmask(SIG_BLOCK, &thread_set, NULL);
+
+	pthread_t worker;
+	pthread_create(&worker, NULL, &handle_client, (int *)fd_c);
+	pthread_detach(worker);
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -376,20 +403,16 @@ int main(int argc, char *argv[])
 
 	while (!_is_exit) {
 		fd_c = accept(fd_skt, NULL, 0);
-		if (fd_c == -1) {
-			exit(EXIT_FAILURE); //TODO handle this case
+		if (fd_c < 0) {
+			if ((errno == EINTR) && (_print_stats == TRUE)) {
+				stats_server_print();
+				_print_stats = FALSE;
+				continue;
+			}
+			break; //TODO is_exit = TRUE?
 		}
-		pthread_t worker;
-		if (pthread_create(&worker, NULL, &handle_client, (int *)fd_c) != 0) {
-			exit(EXIT_FAILURE); //TODO handle this case
-		}
+		spawn_thread(fd_c);
 		incr_threads();
-
-		pthread_detach(worker);
-
-		if (_print_stats == TRUE) {
-			stats_server_print();
-		}
 	}
 
 	//TODO: usare pthread_cond_t
