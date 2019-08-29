@@ -267,7 +267,7 @@ int handle_delete(message *m, user *client)
 
 void *handle_client(void *arg)
 {
-	int fd_c = (int)arg;
+	long fd_c = (long)arg;
 	user *client = NULL;
 	int done = FALSE;
 
@@ -361,7 +361,7 @@ void *handle_client(void *arg)
 	return NULL;
 }
 
-void spawn_thread(int fd_c){
+void spawn_thread(long fd_c){
 
 	sigset_t thread_set;
 	sigemptyset(&thread_set);
@@ -369,7 +369,7 @@ void spawn_thread(int fd_c){
 	pthread_sigmask(SIG_BLOCK, &thread_set, NULL);
 
 	pthread_t worker;
-	pthread_create(&worker, NULL, &handle_client, (int *)fd_c);
+	pthread_create(&worker, NULL, &handle_client, (long *)fd_c);
 	pthread_detach(worker);
 }
 
@@ -381,8 +381,8 @@ int main(int argc, char *argv[])
 	stats_server_init();
 	pthread_mutex_init(&_running_threads_mux, NULL);
 
-	int fd_skt = 0;
-	int fd_c = 0;
+	long fd_skt = 0;
+	long fd_c = 0;
 	struct sockaddr_un sa;
 	memset(&sa, 0, sizeof(sa));
 
