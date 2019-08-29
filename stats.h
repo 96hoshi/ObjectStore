@@ -12,9 +12,6 @@ typedef struct {
 	pthread_mutex_t mux;
 } server_stats;
 
-server_stats _s_stats;
-volatile sig_atomic_t _print_stats;
-
 
 void stats_server_init();
 

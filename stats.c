@@ -3,6 +3,8 @@
 #include <stdlib.h>
 
 
+server_stats _s_stats;
+
 void stats_server_init()
 {
 	server_stats s_stats;
@@ -58,8 +60,8 @@ void stats_server_decr_size(int len)
 
 void stats_server_print()
 {
-	fprintf(stdout, "Connected clients: %d\t", _s_stats.connected_clients);
-	fprintf(stdout, "Number objects: %d\t", _s_stats.n_objects);
+	fprintf(stdout, "Connected clients: %d\n", _s_stats.connected_clients);
+	fprintf(stdout, "Number objects: %d\n", _s_stats.n_objects);
 	fprintf(stdout, "Total size: %d\n", _s_stats.total_size);
 }
 
