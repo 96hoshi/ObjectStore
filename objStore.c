@@ -147,7 +147,6 @@ int storeFile(void *data, char *dataname, size_t len, char *clientname)
 
 	fwrite(data, sizeof(char), len, data_file);
 	fclose(data_file);
-	fprintf(stderr, "%s: Stored file\n", path);
 	return TRUE;
 }
 
@@ -173,7 +172,6 @@ void *retrieveFile(char *dataname, size_t len, char *clientname)
 
 	fread(data, sizeof(char), len, data_file);
 	fclose(data_file);
-	fprintf(stderr, "%s: Retrieved file\n", path);
 	return (void *)data;
 }
 
@@ -186,7 +184,6 @@ int deleteFile(char *dataname, char *clientname)
 	if (access( path, F_OK ) == -1) return FALSE;
 
 	if (remove(path) == 0) {
-		fprintf(stderr, "%s: Removed file\n", path);
 		return TRUE;
 	} else {
 		return FALSE;
@@ -291,7 +288,6 @@ void *handle_client(void *arg)
 				if (handle_register(received, &client) == TRUE) {
 					stats_server_incr_client();
 					sent = message_create(message_ok, NULL, 0, NULL);
-					fprintf(stderr, "Client connected\n");
 				} else {
 					sent = message_create(message_ko, "ERROR: Register failed", 0, NULL);
 					done = TRUE;
@@ -318,7 +314,6 @@ void *handle_client(void *arg)
 
 				if (data != NULL) {
 					sent = message_create(message_data, NULL, len, data); //TODO: memory leak per data
-					fprintf(stderr, "Object retrieved\n");
 				} else {
 					sent = message_create(message_ko, "ERROR: Retrieve failed", 0, NULL);
 				}
@@ -331,7 +326,6 @@ void *handle_client(void *arg)
 
 				if (handle_delete(received, client) == TRUE) {
 					sent = message_create(message_ok, NULL, 0, NULL);
-					fprintf(stderr, "Object removed\n");
 				} else {
 					sent = message_create(message_ko, "ERROR: Delete failed", 0, NULL);
 				}
@@ -343,7 +337,6 @@ void *handle_client(void *arg)
 			case message_leave:							// LEAVE \n
 				sent = message_create(message_ok, NULL, 0, NULL);
 				message_send(fd_c, sent);
-				fprintf(stderr, "Client disconnected\n");
 				done = TRUE;
 				break;
 
