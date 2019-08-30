@@ -5,9 +5,10 @@
 #include <protocol.h>
 
 #define N_OBJECTS		20		// Number of objects created
+#define MAX_SIZE		100000	// Maximum object size
 #define MIN_SIZE		100		// Minimum object size
 #define DATANAME_SIZE	7		// Chars needed by the name "xx.txt"
-#define K				4995	// (100000 - 100)/20
+#define K				5263	// (100.000)/19
 
 typedef struct {
 	int num_success;
@@ -60,7 +61,7 @@ void *createData(size_t len)
 
 int checkData(void *block, size_t len)
 {
-	if (block == NULL && len > 0)	return FALSE;
+	if (block == NULL && len > 0) return FALSE;
 	char *data = (char *)block;
 
 	for (size_t i = 0; i < len; ++i) {
@@ -77,6 +78,7 @@ void makeTest1()
 
 	for (size_t i = 0; i < N_OBJECTS; ++i) {
 		size_t len = K * i + MIN_SIZE;
+		if (len > MAX_SIZE) len = MAX_SIZE;
 		void *data = createData(len);
 		snprintf(dataname, DATANAME_SIZE, "%02zu.txt", i);
 
@@ -93,6 +95,7 @@ void makeTest2()
 	for (size_t i = 0; i < N_OBJECTS; ++i) {
 		snprintf(dataname, DATANAME_SIZE, "%02zu.txt", i);
 		size_t len = K * i + MIN_SIZE;
+		if (len > MAX_SIZE) len = MAX_SIZE;
 
 		void *data = os_retrieve(dataname);
 		updateStats(checkData(data, len));
