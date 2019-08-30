@@ -60,9 +60,11 @@ void stats_server_decr_size(int len)
 
 void stats_server_print()
 {
+	pthread_mutex_lock(&(_s_stats.mux));
 	fprintf(stdout, "Connected clients: %d\n", _s_stats.connected_clients);
 	fprintf(stdout, "Number objects: %d\n", _s_stats.n_objects);
 	fprintf(stdout, "Total size: %d\n", _s_stats.total_size);
+	pthread_mutex_unlock(&(_s_stats.mux));
 }
 
 void stats_server_destroy()
