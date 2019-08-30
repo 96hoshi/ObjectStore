@@ -12,7 +12,7 @@ user *user_create(char *name)
 	user *u = (user *)calloc(1, sizeof(user));
 	u->name = (char *)calloc(name_len, sizeof(char));
 	u->name = strncpy(u->name, name, name_len);
-	u->objects = list_create(object_compare, object_compare_name, object_destroy, object_print);
+	u->objects = list_create(object_compare, object_destroy, object_print);
 
 	return u;
 }
@@ -21,7 +21,7 @@ object *user_search_object(user *u, void *name)
 {
 	if (name == NULL) return NULL;
 
-	return (object *)list_search_field_unsafe(u->objects, name);
+	return (object *)list_search_unsafe(u->objects, name);
 }
 
 list_result user_insert_object(user *u, char *name, size_t len)
@@ -32,26 +32,14 @@ list_result user_insert_object(user *u, char *name, size_t len)
 	return list_insert_unsafe(u->objects, obj);
 }
 
-list_result user_delete_object(user *u, object *obj)
+object *user_delete_object(user *u, void *name)
 {
-	if (u == NULL) return list_null;
+	if (u == NULL || name == NULL) return NULL;
 
-	return list_delete_info_unsafe(u->objects, obj);
+	return list_delete_unsafe(u->objects, name);
 }
 
-int user_compare(void *usr1, void *usr2)
-{
-	user *u1 = (user *)usr1;
-	user *u2 = (user *)usr2;
-
-	if (u1 == NULL && u2 == NULL) return 0;
-	if (u1 == NULL) return 1;
-	if (u2 == NULL) return -1;
-
-	return strcmp(u1->name, u2->name);
-}
-
-int user_compare_name(void *usr, void *usr_name)
+int user_compare(void *usr, void *usr_name)
 {
 	user *u = (user *)usr;
 	char *username = (char *)usr_name;

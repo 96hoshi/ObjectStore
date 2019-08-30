@@ -4,11 +4,11 @@
 #include <stdlib.h>
 #include <pthread.h>
 
+
 typedef enum {
 	list_success = 0,
 	list_null = -10,
-	list_not_found,
-	list_err_mux
+	list_not_found
 } list_result;
 
 typedef int (*fun_info_compare)(void *, void *);
@@ -25,7 +25,6 @@ typedef struct {
 	size_t count;
 	pthread_mutex_t mux;
 	fun_info_compare info_compare;
-	fun_info_compare info_compare_field;
 	fun_info_destroy info_destroy;
 	fun_info_print info_print;
 } list;
@@ -38,7 +37,6 @@ typedef struct {
 // - Inizializza la variabile count a 0
 // - Copia le variabili delle due funzioni nella struttura list
 list *list_create(fun_info_compare info_compare,
-				  fun_info_compare info_compare_field,
 				  fun_info_destroy info_destroy,
 				  fun_info_print info_print);
 
@@ -49,22 +47,12 @@ list *list_create(fun_info_compare info_compare,
 // - Cambio il valore di head con il puntatore alla struttura appena creata
 list_result list_insert_unsafe(list *l, void *info);
 
-// - Ricerca per info
-void *list_search_info_unsafe(list *l, void *info);
-
-// - Ricerca per uno specifico field
-void *list_search_field_unsafe(list *l, void *field);
-
 // Per ogni elemento di l
 //   confronta con la funzione info_compare della struttura il valore info
 //   con l->(*head)->info
 // Restituisco il nodo trovato
 //TODO: Se non la uso da nessuna parte togliere il prototipo dall'header
-void *list_search_unsafe(list *l, void *info, fun_info_compare info_compare);
-
-list_result list_delete_info_unsafe(list *l, void *info);
-
-list_result list_delete_field_unsafe(list *l, void *field);
+void *list_search_unsafe(list *l, void *info);
 
 // - Tenendo un puntatore al nodo precedente (inizialmente NULL)
 // - Per ogni elemento di l
@@ -77,7 +65,8 @@ list_result list_delete_field_unsafe(list *l, void *field);
 // - Libero la memoria per quel nodo
 // - Decremento count
 //TODO: Se non la uso da nessuna parte togliere il prototipo dall'header
-list_result list_delete_unsafe(list *l, void *info, fun_info_compare info_compare);
+void* list_delete_unsafe(list *l, void *info);
+
 
 // - Per ogni elemento di l
 //    Invoca la funzione info_destroy sul nodo
@@ -87,21 +76,15 @@ list_result list_delete_unsafe(list *l, void *info, fun_info_compare info_compar
 // - Liero la memoria per l
 list_result list_destroy(list *l);
 
-// - Fa la lock della var mux della lista l
-list_result list_lock(list *l);
-
-// - Fa la unlock della var mux della lista l
-list_result list_unlock(list *l);
-
-// - Stampa il contenuto della lista
+// - Stampa il contenuto della lista just in case
 list_result list_print(list *l);
 
 // Thread Safe functions
 
 list_result list_insert(list *l, void *info);
 
-void *list_search(list *l, void *info, fun_info_compare info_compare);
+void *list_search(list *l, void *info);
 
-list_result list_delete(list *l, void *info, fun_info_compare info_compare);
+void *list_delete(list *l, void *info);
 
 #endif

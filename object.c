@@ -15,19 +15,7 @@ object *object_create(char *name, size_t len)
 	return o;
 }
 
-int object_compare(void *obj1, void *obj2)
-{
-	object *o1 = (object *)obj1;
-	object *o2 = (object *)obj2;
-
-	if (o1 == NULL && o2 == NULL) return 0;
-	if (o1 == NULL) return 1;
-	if (o2 == NULL) return -1;
-
-	return strcmp(o1->name, o2->name);
-}
-
-int object_compare_name(void *obj, void *obj_name)
+int object_compare(void *obj, void *obj_name)
 {
 	object *o = (object *)obj;
 	char *objname = (char *)obj_name;

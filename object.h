@@ -18,10 +18,7 @@ typedef struct {
 object *object_create(char *name, size_t len);
 
 // TODO: Scrivere la specifica
-int object_compare(void *obj1, void *obj2);
-
-// TODO: Scrivere la specifica
-int object_compare_name(void *obj, void *obj_name);
+int object_compare(void *obj, void *obj_name);
 
 // - Libera la memoria utilizzata per la stringa name
 // - Libera la memoria utilizzata per l'object o

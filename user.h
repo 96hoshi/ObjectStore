@@ -38,13 +38,10 @@ list_result user_insert_object(user *u, char *name, size_t len);
 
 // - Elimina con una funzione di libreria l'oggetto di nome name
 //   nella lista objs
-list_result user_delete_object(user *u, object *obj);
-
-// - Confronta un user con un atro user
-int user_compare(void *usr1, void *usr2);
+object *user_delete_object(user *u, void *name);
 
 // - Confronta un user tramite la stringa usr_name
-int user_compare_name(void *usr, void *usr_name);
+int user_compare(void *usr, void *usr_name);
 
 // - Libera la memoria utilizzata per la stringa name
 // - Libera la memoria utilizzata dalla lista di object
