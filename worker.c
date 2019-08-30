@@ -10,6 +10,7 @@
 #include <signal.h>
 #include "common.h"
 #include "user.h"
+#include "object.h"
 #include "list.h"
 #include "message.h"
 #include "stats.h"
@@ -27,7 +28,6 @@ static int fileStore(void *data, char *dataname, size_t len, char *clientname)
 	sprintf(path, "%s/%s/%s", PATH_DATA, clientname, dataname);
 
 	// file already exists
-	// TODO: to remove, used for testings
 	if (access(path, F_OK) != -1) {
 		fprintf(stderr, "%s: File already exists\n", path);
 		return FALSE;
@@ -81,7 +81,7 @@ int handle_register(message *m, user **client)
 {
 	char *name = m->name;
 
-	*client = (user *)list_search(_users, name, user_compare_name);
+	*client = (user *)list_search(_users, name);
 
 	if (*client == NULL) {
 		char path[MAX_BUFF];
@@ -140,15 +140,13 @@ int handle_delete(message *m, user *client)
 	char *dataname = m->name;
 	char *name = client->name;
 
-	object *obj = user_search_object(client, dataname);
+	object *obj = user_delete_object(client, dataname);
 	if (obj == NULL) return FALSE;
 	size_t len = obj->len;
 
-	list_result res = user_delete_object(client, obj);
-	if (res != list_success) return FALSE;
-
 	if (fileDelete(dataname, name) == FALSE) return FALSE;
 
+	object_destroy(obj);
 	stats_server_decr_obj();
 	stats_server_decr_size(len);
 	return TRUE;
@@ -205,7 +203,7 @@ void *handle_client(void *arg)
 				data = handle_retrieve(received, client, &len);
 
 				if (data != NULL) {
-					sent = message_create(message_data, NULL, len, data); //TODO: memory leak per data
+					sent = message_create(message_data, NULL, len, data);
 				} else {
 					sent = message_create(message_ko, "ERROR: Retrieve failed", 0, NULL);
 				}
