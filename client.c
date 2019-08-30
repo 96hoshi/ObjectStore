@@ -8,7 +8,7 @@
 #define MAX_SIZE		100000	// Maximum object size
 #define MIN_SIZE		100		// Minimum object size
 #define DATANAME_SIZE	7		// Chars needed by the name "xx.txt"
-#define K				5263	// (100.000)/19
+#define K				5258	// round( (100000-100)/(20 -1) )
 
 typedef struct {
 	int num_success;
