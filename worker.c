@@ -18,8 +18,26 @@
 
 extern volatile sig_atomic_t _is_exit;
 extern list *_users;
-extern list *_threads;
+extern pthread_mutex_t _workers_mux;
+extern pthread_cond_t _workers_cond;
+extern size_t _workers;
 
+
+static void workersIncrement()
+{
+	pthread_mutex_lock(&_workers_mux);
+	_workers++;
+	pthread_mutex_unlock(&_workers_mux);
+}
+static void workersDecrement()
+{
+	pthread_mutex_lock(&_workers_mux);
+	_workers--;
+	if(_is_exit) {
+		pthread_cond_signal(&_workers_cond);
+	}
+	pthread_mutex_unlock(&_workers_mux);
+}
 
 static int fileStore(void *data, char *dataname, size_t len, char *clientname)
 {
@@ -154,6 +172,8 @@ int handle_delete(message *m, user *client)
 
 void *handle_client(void *arg)
 {
+	workersIncrement();
+
 	long fd_c = (long)arg;
 	user *client = NULL;
 	int done = FALSE;
@@ -238,19 +258,35 @@ void *handle_client(void *arg)
 		message_destroy(received);
 		message_destroy(sent);
 	}
+
 	stats_server_decr_client();
 	close(fd_c);
+	workersDecrement();
+
 	return NULL;
 }
 
-void spawn_thread(long fd_c)
+void worker_spawn(long fd_c)
 {
 	sigset_t thread_set;
 	sigemptyset(&thread_set);
-
 	pthread_sigmask(SIG_BLOCK, &thread_set, NULL);
 
+	pthread_attr_t thread_attributes;
+
+	if (pthread_attr_init(&thread_attributes) != 0) {
+		fprintf(stderr, "pthread_attr_init FAILED\n");
+		close(fd_c);
+		return;
+	}
+
+	if (pthread_attr_setdetachstate(&thread_attributes, PTHREAD_CREATE_DETACHED) != 0) {
+		fprintf(stderr, "pthread_attr_setdetachstate FALLITA\n");
+		pthread_attr_destroy(&thread_attributes);
+		close(fd_c);
+		return;
+	}
+
 	pthread_t worker;
-	pthread_create(&worker, NULL, &handle_client, (long *)fd_c);
-	pthread_detach(worker);
+	pthread_create(&worker, &thread_attributes, &handle_client, (void *)fd_c);
 }

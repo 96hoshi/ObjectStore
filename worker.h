@@ -7,6 +7,6 @@
 
 void *handle_client(void *arg);
 
-void spawn_thread(long fd_c);
+void worker_spawn(long fd_c);
 
 #endif
