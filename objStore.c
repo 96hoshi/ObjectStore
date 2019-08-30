@@ -28,15 +28,11 @@
 // una struttura condivisa tra i thread e gestita in maniera threadsafe
 // con apposite lock
 
-// Necessito di una libreria per la gestione dei file
-// fileops
-
 #define _XOPEN_SOURCE 500
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <pthread.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -47,7 +43,6 @@
 #include "common.h"
 #include "user.h"
 #include "list.h"
-#include "message.h"
 #include "stats.h"
 #include "worker.h"
 
@@ -126,14 +121,12 @@ int main(int argc, char *argv[])
 	_is_exit = FALSE;
 	// Creating connected users' list
 	_users = list_create(user_compare,
-						 user_compare_name,
 						 user_destroy,
 						 user_print);
 	_threads = NULL;
 	// _threads = list_create(worker_compare,
-	// 					   NULL,
-	// 					   worker_destroy,
-	// 					   NULL);
+	// 						  worker_destroy,
+	// 						  NULL);
 
 	strncpy(sa.sun_path, SOCKNAME, sizeof(sa.sun_path));
 	sa.sun_family = AF_UNIX;
