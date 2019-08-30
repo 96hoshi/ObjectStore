@@ -22,12 +22,12 @@ void test_object()
 		free(str);
 	}
 
-	test += (object_compare_name(NULL,    NULL         ) !=  0);
-	test += (object_compare_name(NULL,    objs[0]->name) !=  1);
-	test += (object_compare_name(objs[0], NULL         ) != -1);
-	test += (object_compare_name(objs[0], objs[1]->name) != -1);
-	test += (object_compare_name(objs[0], objs[0]->name) !=  0);
-	test += (object_compare_name(objs[1], objs[0]->name) !=  1);
+	test += (object_compare(NULL,    NULL         ) !=  0);
+	test += (object_compare(NULL,    objs[0]->name) !=  1);
+	test += (object_compare(objs[0], NULL         ) != -1);
+	test += (object_compare(objs[0], objs[1]->name) != -1);
+	test += (object_compare(objs[0], objs[0]->name) !=  0);
+	test += (object_compare(objs[1], objs[0]->name) !=  1);
 
 	for (int i = 0; i < OBJS_N; ++i) {
 		object_destroy(objs[i]);
@@ -44,7 +44,6 @@ void test_list()
 	int test = 0;
 
 	user_list = list_create(user_compare,
-							user_compare_name,
 							user_destroy,
 							user_print);
 
@@ -65,32 +64,16 @@ void test_list()
 	user *duplicate_u = user_create("a");
 	user *wrong_u = user_create("w");
 
-	// Search_field tests
-	user *u = (user *)list_search_field_unsafe(user_list, duplicate_u->name);
+	// Search tests
+	user *u = (user *)list_search_unsafe(user_list, duplicate_u->name);
 	if (u == NULL) test++;
-	u = (user *)list_search_field_unsafe(user_list, wrong_u->name);
+	u = (user *)list_search_unsafe(user_list, wrong_u->name);
 	if (u != NULL) test++;
-
-
-	// Search_info tests
-	u = (user *)list_search_info_unsafe(user_list, wrong_u);
-	if (u != NULL) test++;
-	u = (user *)list_search_info_unsafe(user_list, duplicate_u);
-	if (u == NULL) test++;
-
-
-	// Compare tests
-	u = (user *)list_search_info_unsafe(user_list, duplicate_u);
-	err = user_compare_name(u, duplicate_u->name);
-	if (err != 0) test++;
-	err = user_compare_name(u, wrong_u->name);
-	if (err == 0) test++;
-
 
 	// Delete tests
-	err = list_delete_field_unsafe(user_list, duplicate_u->name);
+	err = list_delete_unsafe(user_list, duplicate_u->name);
 	if (err != list_success) test++;
-	err = list_delete_field_unsafe(user_list, wrong_u->name);
+	err = list_delete_unsafe(user_list, wrong_u->name);
 	if (err != list_not_found) test++;
 	err = list_delete_info_unsafe(user_list, wrong_u);
 	if (err != list_not_found) test++;
