@@ -6,6 +6,7 @@
 
 
 typedef struct {
+	int served_clients;
 	int connected_clients;
 	int n_objects;
 	int total_size;
@@ -14,6 +15,8 @@ typedef struct {
 
 
 void stats_server_init();
+
+void stats_server_incr_served();
 
 void stats_server_incr_client();
 

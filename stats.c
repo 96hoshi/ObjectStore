@@ -8,12 +8,20 @@ server_stats _s_stats;
 void stats_server_init()
 {
 	server_stats s_stats;
+	s_stats.served_clients = 0;
 	s_stats.connected_clients = 0;
 	s_stats.n_objects = 0;
 	s_stats.total_size = 0;
 	pthread_mutex_init(&(s_stats.mux), NULL);
 
 	_s_stats = s_stats;
+}
+
+void stats_server_incr_served()
+{
+	pthread_mutex_lock(&(_s_stats.mux));
+	_s_stats.served_clients++;
+	pthread_mutex_unlock(&(_s_stats.mux));
 }
 
 void stats_server_incr_client()
@@ -61,6 +69,7 @@ void stats_server_decr_size(int len)
 void stats_server_print()
 {
 	pthread_mutex_lock(&(_s_stats.mux));
+	fprintf(stdout, "Served clients: %d\n", _s_stats.served_clients);
 	fprintf(stdout, "Connected clients: %d\n", _s_stats.connected_clients);
 	fprintf(stdout, "Number objects: %d\n", _s_stats.n_objects);
 	fprintf(stdout, "Total size: %d\n", _s_stats.total_size);
