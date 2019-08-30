@@ -39,6 +39,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <signal.h>
+#include <pthread.h>
 #include <errno.h>
 #include "common.h"
 #include "user.h"
@@ -46,9 +47,12 @@
 #include "stats.h"
 #include "worker.h"
 
-
 volatile sig_atomic_t _print_stats;
 volatile sig_atomic_t _is_exit;
+
+pthread_mutex_t _workers_mux;
+pthread_cond_t _workers_cond;
+size_t _workers;
 list *_users;
 
 
@@ -102,27 +106,30 @@ void set_sigaction()
 
 int main(int argc, char *argv[])
 {
-	unlink(SOCKNAME);
-	set_sigaction();
-	stats_server_init();
-
-	long fd_skt = 0;
-	long fd_c = 0;
-	struct sockaddr_un sa;
-	memset(&sa, 0, sizeof(sa));
-
-	// Creating data
-	struct stat st = {0};
-	if (stat(PATH_DATA, &st) == -1) {
-		mkdir(PATH_DATA, 0700);
-	}
-
+	_print_stats = FALSE;
 	_is_exit = FALSE;
+
+	pthread_mutex_init(&_workers_mux, NULL);
+	pthread_cond_init(&_workers_cond, NULL);
+	_workers = 0;
+
 	// Creating connected users' list
 	_users = list_create(user_compare,
 						 user_destroy,
 						 user_print);
 
+	set_sigaction();
+	stats_server_init();
+
+	// Creating data directory
+	struct stat st = {0};
+	if (stat(PATH_DATA, &st) == -1) {
+		mkdir(PATH_DATA, 0700);
+	}
+
+	long fd_skt = 0;
+	struct sockaddr_un sa;
+	memset(&sa, 0, sizeof(sa));
 	strncpy(sa.sun_path, SOCKNAME, sizeof(sa.sun_path));
 	sa.sun_family = AF_UNIX;
 
@@ -131,27 +138,37 @@ int main(int argc, char *argv[])
 	listen(fd_skt, SOMAXCONN);
 
 	while (!_is_exit) {
-		fd_c = accept(fd_skt, NULL, 0);
+		long fd_c = accept(fd_skt, NULL, 0);
 		if (fd_c < 0) {
-			if ((errno == EINTR) && (_print_stats == TRUE)) {
-				stats_server_print();
-				_print_stats = FALSE;
+			if (errno == EINTR) {
+				if (_print_stats == TRUE) {
+					stats_server_print();
+					_print_stats = FALSE;
+				}
 				continue;
 			}
-			break; //TODO is_exit = TRUE?
+			_is_exit = TRUE;
+			break;
 		}
 		stats_server_incr_served();
 		worker_spawn(fd_c);
 	}
 
-	//TODO: usare pthread_cond_t
-	// if ) {
-	// 	close(fd_skt);
-	// 	exit(EXIT_SUCCESS);
-	// }
+	// Awaits for workers
+	pthread_mutex_lock(&_workers_mux);
+	while(_workers > 0) {
+		pthread_cond_wait(&_workers_cond, &_workers_mux);
+	}
+	pthread_mutex_unlock(&_workers_mux);
+
+	pthread_mutex_destroy(&_workers_mux);
+	pthread_cond_destroy(&_workers_cond);
 
 	list_destroy(_users);
 	stats_server_destroy();
+
 	close(fd_skt);
+	unlink(SOCKNAME);
+
 	return 0;
 }
