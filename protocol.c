@@ -58,11 +58,14 @@ int os_connect(char *name)
 		_fd_skt = socket(AF_UNIX, SOCK_STREAM, 0);
 
 
-		while (connect(_fd_skt, (struct sockaddr *)&sa, sizeof(sa)) == -1) {
-			if (errno == ENOENT)
-				sleep(1);
-			else exit(EXIT_FAILURE);
+		if (connect(_fd_skt, (struct sockaddr *)&sa, sizeof(sa)) < 0) {
+			return FALSE;
 		}
+		// while (connect(_fd_skt, (struct sockaddr *)&sa, sizeof(sa)) == -1) {
+		// 	if (errno == ENOENT)
+		// 		sleep(1);
+		// 	else exit(EXIT_FAILURE);
+		// }
 	}
 
 	message *sent = message_create(message_register, name, 0, NULL);
