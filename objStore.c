@@ -50,7 +50,6 @@
 volatile sig_atomic_t _print_stats;
 volatile sig_atomic_t _is_exit;
 list *_users;
-list *_threads;
 
 
 void handler(int sig)
@@ -123,10 +122,6 @@ int main(int argc, char *argv[])
 	_users = list_create(user_compare,
 						 user_destroy,
 						 user_print);
-	_threads = NULL;
-	// _threads = list_create(worker_compare,
-	// 						  worker_destroy,
-	// 						  NULL);
 
 	strncpy(sa.sun_path, SOCKNAME, sizeof(sa.sun_path));
 	sa.sun_family = AF_UNIX;
@@ -145,7 +140,8 @@ int main(int argc, char *argv[])
 			}
 			break; //TODO is_exit = TRUE?
 		}
-		spawn_thread(fd_c);
+		stats_server_incr_served();
+		worker_spawn(fd_c);
 	}
 
 	//TODO: usare pthread_cond_t
