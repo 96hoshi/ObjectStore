@@ -14,27 +14,33 @@ static void listUnlock(list *l)
 
 list *list_create(fun_info_compare info_compare,
 				  fun_info_destroy info_destroy,
-				  fun_info_print info_print)
+				  fun_info_dump info_dump)
 {
 	list *l = (list *)calloc(1, sizeof(list));
-	if (l == NULL) return NULL;
+	if (l == NULL) {
+		return NULL;
+	}
 
 	pthread_mutex_init(&(l->mux), NULL);
 	l->head = NULL;
 	l->count = 0;
 	l->info_compare = info_compare;
 	l->info_destroy = info_destroy;
-	l->info_print = info_print;
+	l->info_dump = info_dump;
 
 	return l;
 }
 
 list_result list_insert_unsafe(list *l, void *info)
 {
-	if (l == NULL) return list_null;
+	if (l == NULL) {
+		return list_null;
+	}
 
 	node *n = (node *)calloc(1, sizeof(node));
-	if (n == NULL) return list_null;
+	if (n == NULL) {
+		return list_null;
+	}
 
 	n->info = info;
 	n->next = l->head;
@@ -46,20 +52,26 @@ list_result list_insert_unsafe(list *l, void *info)
 
 void *list_search_unsafe(list *l, void *info)
 {
-	if (l == NULL) return NULL;
+	if (l == NULL) {
+		return NULL;
+	}
 
 	node *curr = l->head;
 	while ((curr != NULL) && (l->info_compare(curr->info, info) != 0)) {
 		curr = curr->next;
 	}
 
-	if (curr != NULL) return curr->info;
+	if (curr != NULL) {
+		return curr->info;
+	}
 	return NULL;
 }
 
 void *list_delete_unsafe(list *l, void *info)
 {
-	if (l == NULL || info == NULL) return NULL;
+	if (l == NULL || info == NULL) {
+		return NULL;
+	}
 
 	node *prev = NULL;
 	node *curr = l->head;
@@ -83,39 +95,6 @@ void *list_delete_unsafe(list *l, void *info)
 	return NULL;
 }
 
-list_result list_destroy(list *l)
-{
-	if (l == NULL) return list_success;
-
-	while (l->head != NULL) {
-		node *to_delete = l->head;
-
-		l->head = l->head->next;
-		l->info_destroy(to_delete->info);
-		free(to_delete);
-		l->count--;
-	}
-	pthread_mutex_destroy(&(l->mux));
-	free(l);
-
-	return list_success;
-}
-
-list_result list_print(list *l)
-{
-	if (l == NULL) return list_null;
-
-	listLock(l);
-	node *curr = l->head;
-	while(curr != NULL) {
-		l->info_print(curr->info);
-		curr = curr->next;
-	}
-	listUnlock(l);
-
-	return list_success;
-}
-
 list_result list_insert(list *l, void *info)
 {
 	listLock(l);
@@ -134,6 +113,25 @@ void *list_search(list *l, void *info)
 	return i;
 }
 
+int list_dump(list *l, FILE *f)
+{
+	if (l == NULL) {
+		return list_null;
+	}
+	listLock(l);
+
+	fprintf(f, "%zu\n", l->count);
+
+	node *curr = l->head;
+	while(curr != NULL) {
+		l->info_dump(curr->info, f);
+		curr = curr->next;
+	}
+	listUnlock(l);
+
+	return list_success;
+}
+
 void *list_delete(list *l, void *info)
 {
 	listLock(l);
@@ -141,4 +139,24 @@ void *list_delete(list *l, void *info)
 	listUnlock(l);
 
 	return i;
+}
+
+list_result list_destroy(list *l)
+{
+	if (l == NULL) {
+		return list_success;
+	}
+
+	while (l->head != NULL) {
+		node *to_delete = l->head;
+
+		l->head = l->head->next;
+		l->info_destroy(to_delete->info);
+		free(to_delete);
+		l->count--;
+	}
+	pthread_mutex_destroy(&(l->mux));
+	free(l);
+
+	return list_success;
 }
