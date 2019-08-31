@@ -13,10 +13,13 @@
 #include <errno.h>
 #include "common.h"
 #include "user.h"
+#include "object.h"
 #include "list.h"
 #include "stats.h"
 #include "worker.h"
 
+
+#define PATH_DUMP PATH_DATA"/dump.dat"
 
 volatile sig_atomic_t _print_stats;
 volatile sig_atomic_t _is_exit;
@@ -75,10 +78,67 @@ void set_sigaction()
 	}
 }
 
+void users_dump_restore()
+{
+	if (access(PATH_DUMP, F_OK) == -1) {
+		return;
+	}
+
+	FILE *f = fopen(PATH_DUMP, "r");
+	if (f == NULL) {
+		fprintf(stderr, "Error while reading "PATH_DUMP);
+		exit(EXIT_FAILURE);
+	}
+
+	size_t users_count = 0;
+	fscanf(f, "%zu", &users_count);
+
+	for (size_t i = 0; i < users_count; ++i) {
+		size_t name_size = 0;
+		char *name = NULL;
+		fscanf(f, "%zu", &name_size);
+
+		if (name_size > 0) {
+			name = (char *)calloc(name_size + 1, sizeof(char));
+			if (name == NULL) {
+				exit(EXIT_FAILURE);
+			}
+			fscanf(f, "%s", name);
+		}
+		user *u = user_create(name);
+		list_insert_unsafe(_users, u);
+
+		size_t objects_count = 0;
+		fscanf(f, "%zu", &objects_count);
+		for (size_t j = 0; j < objects_count; ++j) {
+			size_t object_size = 0;
+			char *object_name = NULL;
+			size_t object_len = 0;
+
+			fscanf(f, "%zu", &object_size);
+			if (object_size > 0) {
+				object_name = (char *)calloc(object_size + 1, sizeof(char));
+				if (object_name == NULL) {
+					exit(EXIT_FAILURE);
+				}
+				fscanf(f, "%s", object_name);
+			}
+			fscanf(f, "%zu", &object_len);
+
+			user_insert_object(u, object_name, object_len);
+			stats_server_incr_obj();
+			stats_server_incr_size(object_len);
+		}
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	_print_stats = FALSE;
 	_is_exit = FALSE;
+
+	set_sigaction();
+	stats_server_init();
 
 	pthread_mutex_init(&_workers_mux, NULL);
 	pthread_cond_init(&_workers_cond, NULL);
@@ -87,13 +147,11 @@ int main(int argc, char *argv[])
 	// Creating connected users' list
 	_users = list_create(user_compare,
 						 user_destroy,
-						 user_print);
+						 user_dump);
 	if (_users == NULL) {
 		exit(EXIT_FAILURE);
 	}
-
-	set_sigaction();
-	stats_server_init();
+	users_dump_restore();
 
 	struct stat st = {0};
 	if (stat(PATH_DATA, &st) == -1) {
@@ -136,6 +194,13 @@ int main(int argc, char *argv[])
 
 	pthread_mutex_destroy(&_workers_mux);
 	pthread_cond_destroy(&_workers_cond);
+
+	FILE *f = fopen(PATH_DUMP, "w");
+	if (f == NULL) {
+		fprintf(stderr, "Error while creating "PATH_DUMP);
+	}
+	list_dump(_users, f);
+	fclose(f);
 
 	list_destroy(_users);
 	stats_server_destroy();
