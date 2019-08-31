@@ -2,7 +2,7 @@
 
 #include "message.h"
 #include <stdio.h>
-#include <stdlib.h>
+// #include <stdlib.h>
 #include <math.h>
 #include <string.h>
 #include <sys/types.h>
@@ -32,6 +32,7 @@ static message_op getOp(char *op_str)
 			return i;
 		}
 	}
+
 	return message_err;
 }
 
@@ -43,6 +44,7 @@ static ssize_t getPosDelimiter(char *buffer, size_t buffer_size, char delimiter)
 	if (buffer[i] == delimiter) {
 		return i;
 	}
+
 	return -1;
 }
 
@@ -91,11 +93,11 @@ static char *readHeader(long sock, char *buffer, size_t *buffer_size, size_t *po
 
 		ssize_t n = read(sock, b + r, s - r);
 
-		// closed the connection
+		// closed connection
 		if (n == 0) return NULL;
 
 		if (n < 0) {
-			// handle delivery of a signal
+			// delivery of a signal
 			if (errno == EINTR) {
 				continue;
 			}
@@ -120,13 +122,13 @@ static int readData(long sock, char *buffer, size_t buffer_size)
 	while (r < buffer_size) {
 		ssize_t n = read(sock, buffer + r, buffer_size - r);
 
-		// handle connection closed
+		// closed connection
 		if (n == 0) {
 			return FALSE;
 		}
 
 		if (n < 0) {
-			// handle delivery of a signal
+			// delivery of a signal
 			if (errno == EINTR) {
 				continue;
 			}
@@ -315,8 +317,7 @@ int message_send(long sock, message *m)
 
 		case message_err:
 		default:
-			invalid_operation(NULL);
-			break;
+			return FALSE;
 	}
 
 	m->buff = header;
@@ -330,14 +331,17 @@ int message_send(long sock, message *m)
 	if (op == message_store || op == message_data) {
 		return myWrite(sock, data, len);
 	}
+
 	return TRUE;
 }
 
-void * messasge_extract_data(message * m)
+// Now message m no more contains data pointer
+void *message_extract_data(message *m)
 {
 	if (m == NULL) return NULL;
-	void * data = m->data;
+	void *data = m->data;
 	m->data = NULL;
+
 	return data;
 }
 
