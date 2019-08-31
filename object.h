@@ -1,6 +1,7 @@
 #ifndef OBJECT_H
 #define OBJECT_H
 
+#include <stdio.h>
 #include <stdlib.h>
 
 
@@ -14,8 +15,8 @@ object *object_create(char *name, size_t len);
 
 int object_compare(void *obj, void *obj_name);
 
-void object_destroy(void *obj);
+void object_dump(void *obj, FILE *f);
 
-void object_print(void *obj);
+void object_destroy(void *obj);
 
 #endif

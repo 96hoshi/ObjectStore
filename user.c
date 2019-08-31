@@ -1,5 +1,4 @@
 #include "user.h"
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -10,9 +9,16 @@ user *user_create(char *name)
 
 	size_t name_len = strlen(name) + 1;
 	user *u = (user *)calloc(1, sizeof(user));
+	if (u == NULL) {
+		return NULL;
+	}
 	u->name = (char *)calloc(name_len, sizeof(char));
+	if (u->name == NULL) {
+		free(u);
+		return NULL;
+	}
 	u->name = strncpy(u->name, name, name_len);
-	u->objects = list_create(object_compare, object_destroy, object_print);
+	u->objects = list_create(object_compare, object_destroy, object_dump);
 
 	return u;
 }
@@ -34,7 +40,9 @@ list_result user_insert_object(user *u, char *name, size_t len)
 
 object *user_delete_object(user *u, void *name)
 {
-	if (u == NULL || name == NULL) return NULL;
+	if (u == NULL || name == NULL) {
+		return NULL;
+	}
 
 	return list_delete_unsafe(u->objects, name);
 }
@@ -51,6 +59,25 @@ int user_compare(void *usr, void *usr_name)
 	return strcmp(u->name, username);
 }
 
+void user_dump(void *usr, FILE *f)
+{
+	if (usr == NULL) return;
+	user *u = (user *)usr;
+
+	if (u->name == NULL) {
+		fprintf(f, "0\n");
+	} else {
+		fprintf(f, "%zu\n", strlen(u->name));
+		fprintf(f, "%s\n", u->name);
+	}
+
+	if (u->objects == NULL) {
+		fprintf(f, "0\n");
+	} else {
+		list_dump(u->objects, f);
+	}
+}
+
 void user_destroy(void *usr)
 {
 	if (usr == NULL) return;
@@ -58,13 +85,4 @@ void user_destroy(void *usr)
 	if (u->name != NULL) free(u->name);
 	if (u->objects != NULL) list_destroy(u->objects);
 	free(u);
-}
-
-void user_print(void *usr)
-{
-	if (usr == NULL) return;
-	user *u = (user *)usr;
-
-	if (u->name != NULL) printf("User name: %s\n", u->name);
-	if (u->objects != NULL) list_print(u->objects);
 }

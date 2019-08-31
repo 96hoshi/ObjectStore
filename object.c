@@ -1,5 +1,4 @@
 #include "object.h"
-#include <stdio.h>
 #include <string.h>
 
 
@@ -9,9 +8,14 @@ object *object_create(char *name, size_t len)
 
 	size_t name_len = strlen(name) + 1;
 	object *o = (object *)calloc(1, sizeof(object));
-	if (o == NULL) return NULL;
+	if (o == NULL) {
+		return NULL;
+	}
 	o->name = (char *)calloc(name_len, sizeof(char));
-	if (o->name == NULL) return NULL;
+	if (o->name == NULL) {
+		free(o);
+		return NULL;
+	}
 	o->name = strcpy(o->name, name);
 	o->len = len;
 
@@ -30,17 +34,25 @@ int object_compare(void *obj, void *obj_name)
 	return strcmp(o->name, objname);
 }
 
+void object_dump(void *obj, FILE *f)
+{
+	if (obj == NULL) return;
+	object *o = (object *)obj;
+
+	if (o->name == NULL) {
+		fprintf(f, "0\n");
+		fprintf(f, "0\n");
+	} else {
+		fprintf(f, "%zu\n", strlen(o->name));
+		fprintf(f, "%s\n", o->name);
+		fprintf(f, "%zu\n", o->len);
+	}
+}
+
 void object_destroy(void *obj)
 {
 	if (obj == NULL) return;
 	object *o = (object *)obj;
 	if (o->name != NULL) free(o->name);
 	free(o);
-}
-
-void object_print(void *obj)
-{
-	if (obj == NULL) return;
-	object *o = (object *)obj;
-	if (o->name != NULL) printf("Object name: %s\n", o->name);
 }

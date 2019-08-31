@@ -1,6 +1,7 @@
 #ifndef USER_H
 #define USER_H
 
+#include <stdio.h>
 #include "list.h"
 #include "object.h"
 
@@ -20,8 +21,8 @@ object *user_delete_object(user *u, void *name);
 
 int user_compare(void *usr, void *usr_name);
 
-void user_destroy(void *usr);
+void user_dump(void *usr, FILE *f);
 
-void user_print(void *usr);
+void user_destroy(void *usr);
 
 #endif
