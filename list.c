@@ -12,17 +12,15 @@ static void listUnlock(list *l)
 }
 
 
-// Thread Unsafe functions
-
 list *list_create(fun_info_compare info_compare,
 				  fun_info_destroy info_destroy,
 				  fun_info_print info_print)
 {
 	list *l = (list *)calloc(1, sizeof(list));
+	if (l == NULL) return NULL;
 
 	pthread_mutex_init(&(l->mux), NULL);
 	l->head = NULL;
-	l->count = 0;
 	l->info_compare = info_compare;
 	l->info_destroy = info_destroy;
 	l->info_print = info_print;
@@ -32,13 +30,14 @@ list *list_create(fun_info_compare info_compare,
 
 list_result list_insert_unsafe(list *l, void *info)
 {
-	if (l == NULL || info == NULL) return list_null;
+	if (l == NULL) return list_null;
 
 	node *n = (node *)calloc(1, sizeof(node));
+	if (n == NULL) return list_null;
+
 	n->info = info;
 	n->next = l->head;
 	l->head = n;
-	l->count++;
 
 	return list_success;
 }
@@ -48,7 +47,6 @@ void *list_search_unsafe(list *l, void *info)
 	if (l == NULL) return NULL;
 
 	node *curr = l->head;
-
 	while ((curr != NULL) && (l->info_compare(curr->info, info) != 0)) {
 		curr = curr->next;
 	}
@@ -63,7 +61,6 @@ void *list_delete_unsafe(list *l, void *info)
 
 	node *prev = NULL;
 	node *curr = l->head;
-
 	while ((curr != NULL) && (l->info_compare(curr->info, info) != 0)) {
 		prev = curr;
 		curr = curr->next;
@@ -75,11 +72,11 @@ void *list_delete_unsafe(list *l, void *info)
 		} else {
 			prev->next = curr->next;
 		}
-		l->count--;
 		void *curr_info = curr->info;
 		free(curr);
 		return curr_info;
 	}
+
 	return NULL;
 }
 
@@ -93,14 +90,12 @@ list_result list_destroy(list *l)
 		l->head = l->head->next;
 		l->info_destroy(to_delete->info);
 		free(to_delete);
-		l->count--;
 	}
 	pthread_mutex_destroy(&(l->mux));
 	free(l);
 
 	return list_success;
 }
-
 
 list_result list_print(list *l)
 {
@@ -113,10 +108,9 @@ list_result list_print(list *l)
 		curr = curr->next;
 	}
 	listUnlock(l);
+
 	return list_success;
 }
-
-//Thread Safe functions
 
 list_result list_insert(list *l, void *info)
 {
