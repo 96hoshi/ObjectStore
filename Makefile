@@ -40,4 +40,5 @@ test: objStore client
 
 
 clean:
-	$(RM) $(OBJS) $(TARGETS) *~ *.sock
+	$(RM) $(OBJS) $(TARGETS) *~ *.sock testout.log
+	$(RM) -r ./data/
