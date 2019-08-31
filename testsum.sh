@@ -3,10 +3,10 @@
 awk -F ' ' '
 BEGIN {anom=0}
 {
-a[$2]+=$3;
-success+=$4;
-fail+=$5;
-if ($5 > 0) anom+=1
+a[$1]+=$2;
+success+=$3;
+fail+=$4;
+if ($4 > 0) anom+=1
 }
 END {
 for (i in a)
