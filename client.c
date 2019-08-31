@@ -25,12 +25,15 @@ void printStats()
 						 _stats.num_fails);
 }
 
-void updateStats(int result)
+void updateStats(int result, int test)
 {
 	if (result == TRUE) {
 		_stats.num_success++;
 	} else {
 		_stats.num_fails++;
+		printf("Test%d: ", test);
+		printStats();
+		exit(EXIT_FAILURE);
 	}
 }
 
@@ -49,7 +52,7 @@ char valueAtIndex(size_t i)
 void *createData(size_t len)
 {
 	char *data = (char *)calloc(len, sizeof(char));
-	if (data == NULL && len > 0) return NULL;
+	if (data == NULL) return NULL;
 
 	for (size_t i = 0; i < len; ++i) {
 		data[i] = valueAtIndex(i);
@@ -60,7 +63,6 @@ void *createData(size_t len)
 
 int checkData(void *block, size_t len)
 {
-	if (block == NULL && len > 0) return FALSE;
 	char *data = (char *)block;
 
 	for (size_t i = 0; i < len; ++i) {
@@ -72,7 +74,7 @@ int checkData(void *block, size_t len)
 	return TRUE;
 }
 
-void makeTest1()
+int makeTest1()
 {
 	char dataname[DATANAME_SIZE];
 
@@ -86,13 +88,20 @@ void makeTest1()
 			continue;
 		}
 
-		updateStats(os_store(dataname, data, len));
-
+		int result = os_store(dataname, data, len);
 		free(data);
+
+		if (result == FALSE) {
+			_stats.num_fails++;
+			return FALSE;
+		}
+		_stats.num_success++;
 	}
+
+	return TRUE;
 }
 
-void makeTest2()
+int makeTest2()
 {
 	char dataname[DATANAME_SIZE];
 
@@ -102,21 +111,38 @@ void makeTest2()
 		size_t len = lenAtIndex(i);
 		void *data = os_retrieve(dataname);
 
-		updateStats(checkData(data, len));
+		if (data == NULL) {
+			_stats.num_fails++;
+			return FALSE;
+		}
+
+		if (checkData(data, len) == TRUE) {
+			_stats.num_success++;
+		} else {
+			_stats.num_fails++;
+		}
 
 		free(data);
 	}
+
+	return TRUE;
 }
 
-void makeTest3()
+int makeTest3()
 {
 	char dataname[DATANAME_SIZE];
 
 	for (size_t i = 0; i < N_OBJECTS; ++i) {
 		snprintf(dataname, DATANAME_SIZE, "%02zu.txt", i);
 
-		updateStats(os_delete(dataname));
+		if (os_delete(dataname) == FALSE) {
+			_stats.num_fails++;
+			return FALSE;
+		}
+		_stats.num_success++;
 	}
+
+	return TRUE;
 }
 
 int main(int argc, char *argv[])
@@ -126,7 +152,6 @@ int main(int argc, char *argv[])
 
 	if (argc < 3) {
 		fprintf(stderr, "Not enough inputs");
-		printStats();
 		exit(EXIT_FAILURE);
 	}
 
@@ -139,33 +164,38 @@ int main(int argc, char *argv[])
 
 	if (os_connect(name) == FALSE) {
 		_stats.num_fails++;
+		printf("Test%d: ", test_case);
 		printStats();
 		exit(EXIT_FAILURE);
 	}
 	_stats.num_success++;
 
+	int result = FALSE;
+
 	switch (test_case) {
 
 		case 1 :		// Store
-			makeTest1();
+			result = makeTest1();
 			break;
 
 		case 2 :		// Retrieve
-			makeTest2();
+			result = makeTest2();
 			break;
 
 		case 3 :		// Delete
-			makeTest3();
+			result = makeTest3();
 			break;
 
 		default:
 			break;
 	}
 
-	os_disconnect();
-	_stats.num_success++;
+	if (result == TRUE) {
+		os_disconnect();
+		_stats.num_success++;
+	}
 
-	printf("%s Test%d: ", name, test_case);
+	printf("Test%d: ", test_case);
 	printStats();
 
 	return 0;
