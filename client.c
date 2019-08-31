@@ -18,15 +18,6 @@ typedef struct {
 client_stats _stats;
 
 
-client_stats initStats()
-{
-	client_stats c_stats;
-	c_stats.num_success = 0;
-	c_stats.num_fails = 0;
-
-	return c_stats;
-}
-
 void printStats()
 {
 	printf("%d %d %d\n", _stats.num_success + _stats.num_fails,
@@ -43,6 +34,13 @@ void updateStats(int result)
 	}
 }
 
+size_t lenAtIndex(size_t i)
+{
+	size_t len = K * i + MIN_SIZE;
+	return (len > MAX_SIZE ? MAX_SIZE : len);
+}
+
+// Returns char from 127 to -128
 char valueAtIndex(size_t i)
 {
 	return (char)(127 - (i % 255));
@@ -51,11 +49,12 @@ char valueAtIndex(size_t i)
 void *createData(size_t len)
 {
 	char *data = (char *)calloc(len, sizeof(char));
-	check_calloc(data, NULL);
+	if (data == NULL && len > 0) return NULL;
 
 	for (size_t i = 0; i < len; ++i) {
 		data[i] = valueAtIndex(i);
 	}
+
 	return (void *)data;
 }
 
@@ -69,6 +68,7 @@ int checkData(void *block, size_t len)
 			return FALSE;
 		}
 	}
+
 	return TRUE;
 }
 
@@ -77,10 +77,14 @@ void makeTest1()
 	char dataname[DATANAME_SIZE];
 
 	for (size_t i = 0; i < N_OBJECTS; ++i) {
-		size_t len = K * i + MIN_SIZE;
-		if (len > MAX_SIZE) len = MAX_SIZE;
-		void *data = createData(len);
 		snprintf(dataname, DATANAME_SIZE, "%02zu.txt", i);
+
+		size_t len = lenAtIndex(i);
+		void *data = createData(len);
+		if (data == NULL) {
+			_stats.num_fails++;
+			continue;
+		}
 
 		updateStats(os_store(dataname, data, len));
 
@@ -94,10 +98,10 @@ void makeTest2()
 
 	for (size_t i = 0; i < N_OBJECTS; ++i) {
 		snprintf(dataname, DATANAME_SIZE, "%02zu.txt", i);
-		size_t len = K * i + MIN_SIZE;
-		if (len > MAX_SIZE) len = MAX_SIZE;
 
+		size_t len = lenAtIndex(i);
 		void *data = os_retrieve(dataname);
+
 		updateStats(checkData(data, len));
 
 		free(data);
@@ -117,8 +121,12 @@ void makeTest3()
 
 int main(int argc, char *argv[])
 {
+	_stats.num_success = 0;
+	_stats.num_fails = 0;
+
 	if (argc < 3) {
 		fprintf(stderr, "Not enough inputs");
+		printStats();
 		exit(EXIT_FAILURE);
 	}
 
@@ -128,8 +136,6 @@ int main(int argc, char *argv[])
 	char *name = argv[0];
 	char *test_str = argv[1];
 	int test_case = strtol(test_str, NULL, 10);
-
-	_stats = initStats();
 
 	if (os_connect(name) == FALSE) {
 		_stats.num_fails++;
@@ -158,7 +164,9 @@ int main(int argc, char *argv[])
 
 	os_disconnect();
 	_stats.num_success++;
-	printf("%s Test%d: ", name,test_case);
+
+	printf("%s Test%d: ", name, test_case);
 	printStats();
+
 	return 0;
 }
