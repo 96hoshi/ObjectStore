@@ -158,6 +158,7 @@ int main(int argc, char *argv[])
 
 	os_disconnect();
 	_stats.num_success++;
+	printf("%s Test%d: ", name,test_case);
 	printStats();
 	return 0;
 }
