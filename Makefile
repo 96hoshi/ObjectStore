@@ -2,10 +2,16 @@ CC			= gcc
 CFLAGS		= -std=c99 -Wall -g -pedantic -I.
 LDFLAGS		= -L.
 LIBS		= -lprotocol -lm
-TARGETS		= client objStore libprotocol.a
+TARGETS		= objStore libprotocol.a client
 OBJS		= protocol.o message.o object.o user.o list.o stats.o worker.o
+SOCKNAME	= objstore.sock
+LOG			= testout.log
+DIR			= ./data
 
 .PHONY: all test clean
+
+
+all: $(TARGETS)
 
 
 objStore: stats.o message.o list.o user.o object.o worker.o
@@ -32,13 +38,10 @@ libprotocol.a: protocol.o message.o common.h
 	$(AR) rvs $@ $^
 
 
-all: $(TARGETS)
-
-
 test: objStore client
 	@./test_clients.sh
 
 
 clean:
-	$(RM) $(OBJS) $(TARGETS) *~ *.sock testout.log
-	$(RM) -r ./data/
+	$(RM) $(TARGETS) $(OBJS) $(SOCKNAME) ${LOG} *~
+	$(RM) -r ${DIR}
