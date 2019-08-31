@@ -1,16 +1,5 @@
-// Contiene le funzioni che utilizzerà il client per comunicare col server
-// Responsabile di ricevere, tradurre e mandare messaggi
-// La traduzione e l'invio avviene mediante le funzioni di libreria message.h
-
-// 	-univoco nella cartella ----> controllo lato server
-
-// Se questi controlli sono verificati manda al server una socket con l'header
-// creato da message.h
-// Riceve poi l'esito da parte del server e manda la risposta al client
-
 #include "protocol.h"
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
@@ -20,15 +9,22 @@
 #include <message.h>
 #include <common.h>
 
+
 static long _fd_skt = -1;
 
 
 static int sendAndReceive(message *sent)
 {
-	int result = FALSE;
+	if (message_send(_fd_skt, sent) == FALSE) {
+		return FALSE;
+	}
 
-	message_send(_fd_skt, sent);
 	message *received = message_receive(_fd_skt);
+	if (received == NULL) {
+		return FALSE;
+	}
+
+	int result = FALSE;
 
 	if (received->op == message_ok) {
 		result = TRUE;
@@ -39,8 +35,9 @@ static int sendAndReceive(message *sent)
 	}
 
 	if (sent->op == message_store) {
-		messasge_extract_data(sent); // avoid to release not owned data
+		message_extract_data(sent); // avoid to release not owned data
 	}
+
 	message_destroy(sent);
 	message_destroy(received);
 
@@ -55,17 +52,13 @@ int os_connect(char *name)
 
 		strncpy(sa.sun_path, SOCKNAME, sizeof(sa.sun_path));
 		sa.sun_family = AF_UNIX;
-		_fd_skt = socket(AF_UNIX, SOCK_STREAM, 0);
-
+		if ((_fd_skt = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
+			return FALSE;
+		}
 
 		if (connect(_fd_skt, (struct sockaddr *)&sa, sizeof(sa)) < 0) {
 			return FALSE;
 		}
-		// while (connect(_fd_skt, (struct sockaddr *)&sa, sizeof(sa)) == -1) {
-		// 	if (errno == ENOENT)
-		// 		sleep(1);
-		// 	else exit(EXIT_FAILURE);
-		// }
 	}
 
 	message *sent = message_create(message_register, name, 0, NULL);
@@ -81,37 +74,60 @@ int os_store(char *name, void *block, size_t len)
 
 void *os_retrieve(char *name)
 {
-	if (_fd_skt < 0) return NULL;
+	if (name == NULL) {
+		return NULL;
+	}
+
+	if (_fd_skt < 0) {
+		return NULL;
+	}
+
 	void *data = NULL;
 
 	message *sent = message_create(message_retrieve, name, 0, NULL);
-	message_send(_fd_skt, sent);
+	if (message_send(_fd_skt, sent) == FALSE) {
+		message_destroy(sent);
+		return NULL;
+	}
+
 	message *received = message_receive(_fd_skt);
+	if (received == NULL) {
+		message_destroy(sent);
+		return NULL;
+	}
 
 	if (received->op == message_data) {
-		data = messasge_extract_data(received);
+		data = message_extract_data(received);
 	}
+
 	if (received->op == message_ko) {
 		fprintf(stderr,"%s\n", received->name);
 	}
+
 	message_destroy(sent);
 	message_destroy(received);
+
 	return data;
 }
 
 int os_delete(char *name)
 {
-	if (_fd_skt < 0) return FALSE;
+	if (_fd_skt < 0) {
+		return FALSE;
+	}
 	message *sent = message_create(message_delete, name, 0, NULL);
 	return sendAndReceive(sent);
 }
 
 int os_disconnect()
 {
-	if (_fd_skt < 0) return FALSE;
+	if (_fd_skt < 0) {
+		return FALSE;
+	}
 
 	message *sent = message_create(message_leave, NULL, 0, NULL);
 	int result = sendAndReceive(sent);
 	close(_fd_skt);
+
 	return result;
 }

@@ -51,18 +51,23 @@ static int fileStore(void *data, char *dataname, size_t len, char *clientname)
 		return FALSE;
 	}
 	data_file = fopen(path, "w");
-	if(data_file == NULL) return FALSE;
+	if(data_file == NULL) {
+		return FALSE;
+	}
 
-	fwrite(data, sizeof(char), len, data_file);
+	int result = fwrite(data, sizeof(char), len, data_file);
 	fclose(data_file);
-	return TRUE;
+	return result == len;
 }
 
 static void *fileRetrive(char *dataname, size_t len, char *clientname)
 {
 	FILE *data_file = NULL;
 	char *data = (char *)calloc(len, sizeof(char));
-	check_calloc(data, NULL);
+	if (data == NULL) {
+		return NULL;
+	}
+
 	char path[MAX_BUFF];
 	sprintf(path, "%s/%s/%s", PATH_DATA, clientname, dataname);
 
@@ -78,8 +83,13 @@ static void *fileRetrive(char *dataname, size_t len, char *clientname)
 		return NULL;
 	}
 
-	fread(data, sizeof(char), len, data_file);
+	int result = fread(data, sizeof(char), len, data_file);
 	fclose(data_file);
+
+	if (result != len) {
+		free(data);
+		return NULL;
+	}
 	return (void *)data;
 }
 
@@ -89,9 +99,14 @@ static int fileDelete(char *dataname, char *clientname)
 	sprintf(path, "%s/%s/%s", PATH_DATA, clientname, dataname);
 
 	// file doesn't exist
-	if (access( path, F_OK ) == -1) return FALSE;
+	if (access( path, F_OK ) == -1) {
+		return FALSE;
+	}
 
-	return remove(path) == 0 ? TRUE : FALSE;
+	if (remove(path) != 0) {
+		return FALSE;
+	}
+	return TRUE;
 }
 
 
@@ -113,7 +128,9 @@ int handle_register(message *m, user **client)
 
 		*client = user_create(name);
 		list_result res = list_insert(_users, *client);
-		if (res != list_success) return FALSE;
+		if (res != list_success) {
+			return FALSE;
+		}
 	}
 	return TRUE;
 }
@@ -127,25 +144,34 @@ int handle_store(message *m, user *client)
 	char *data = m->data;
 	char *name = client->name;
 
-	if (fileStore(data, dataname, len, name) == FALSE) return FALSE;
+	if (fileStore(data, dataname, len, name) == FALSE) {
+		return FALSE;
+	}
 
 	list_result res = user_insert_object(client, dataname, len);
-	if (res != list_success) return FALSE;
+	if (res != list_success) {
+		return FALSE;
+	}
 
 	stats_server_incr_obj();
 	stats_server_incr_size(len);
+
 	return TRUE;
 }
 
 void *handle_retrieve(message *m, user *client, size_t *len)
 {
-	if (client == NULL) return NULL;
+	if (client == NULL) {
+		return NULL;
+	}
 
 	char *dataname = m->name;
 	char *name = client->name;
 
 	object *obj = user_search_object(client, dataname);
-	if (obj == NULL) return NULL;
+	if (obj == NULL) {
+		return NULL;
+	}
 	*len = obj->len;
 
 	return fileRetrive(dataname, *len, name);
@@ -153,20 +179,28 @@ void *handle_retrieve(message *m, user *client, size_t *len)
 
 int handle_delete(message *m, user *client)
 {
-	if (client == NULL) return FALSE;
+	if (client == NULL) {
+		return FALSE;
+	}
 
 	char *dataname = m->name;
 	char *name = client->name;
 
 	object *obj = user_delete_object(client, dataname);
-	if (obj == NULL) return FALSE;
+	if (obj == NULL) {
+		return FALSE;
+	}
+
+	if (fileDelete(dataname, name) == FALSE) {
+		return FALSE;
+	}
+
 	size_t len = obj->len;
-
-	if (fileDelete(dataname, name) == FALSE) return FALSE;
-
 	object_destroy(obj);
+
 	stats_server_decr_obj();
 	stats_server_decr_size(len);
+
 	return TRUE;
 }
 
@@ -202,9 +236,6 @@ void *handle_client(void *arg)
 					sent = message_create(message_ko, "ERROR: Register failed", 0, NULL);
 					done = TRUE;
 				}
-				if (message_send(fd_c, sent) == FALSE) {
-					done = TRUE;
-				}
 				break;
 
 			case message_store:							// STORE name len \n data
@@ -213,9 +244,6 @@ void *handle_client(void *arg)
 					sent = message_create(message_ok, NULL, 0, NULL);
 				} else {
 					sent = message_create(message_ko, "ERROR: Store failed", 0, NULL);
-				}
-				if (message_send(fd_c, sent) == FALSE) {
-					done = TRUE;
 				}
 				break;
 
@@ -227,9 +255,6 @@ void *handle_client(void *arg)
 				} else {
 					sent = message_create(message_ko, "ERROR: Retrieve failed", 0, NULL);
 				}
-				if (message_send(fd_c, sent) == FALSE) {
-					done = TRUE;
-				}
 				break;
 
 			case message_delete:						// DELETE name \n
@@ -239,22 +264,23 @@ void *handle_client(void *arg)
 				} else {
 					sent = message_create(message_ko, "ERROR: Delete failed", 0, NULL);
 				}
-				if (message_send(fd_c, sent) == FALSE) {
-					done = TRUE;
-				}
 				break;
 
 			case message_leave:							// LEAVE \n
 				sent = message_create(message_ok, NULL, 0, NULL);
-				message_send(fd_c, sent);
 				done = TRUE;
 				break;
 
 			case message_err:
 			default:
-				invalid_operation(NULL);
+				exit(EXIT_FAILURE);
 				break;
 		}
+
+		if (message_send(fd_c, sent) == FALSE) {
+			done = TRUE;
+		}
+
 		message_destroy(received);
 		message_destroy(sent);
 	}

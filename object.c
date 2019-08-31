@@ -2,13 +2,16 @@
 #include <stdio.h>
 #include <string.h>
 
+
 object *object_create(char *name, size_t len)
 {
 	if (name == NULL) return NULL;
 
 	size_t name_len = strlen(name) + 1;
 	object *o = (object *)calloc(1, sizeof(object));
+	if (o == NULL) return NULL;
 	o->name = (char *)calloc(name_len, sizeof(char));
+	if (o->name == NULL) return NULL;
 	o->name = strcpy(o->name, name);
 	o->len = len;
 

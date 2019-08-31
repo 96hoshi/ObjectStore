@@ -21,6 +21,7 @@ list *list_create(fun_info_compare info_compare,
 
 	pthread_mutex_init(&(l->mux), NULL);
 	l->head = NULL;
+	l->count = 0;
 	l->info_compare = info_compare;
 	l->info_destroy = info_destroy;
 	l->info_print = info_print;
@@ -38,6 +39,7 @@ list_result list_insert_unsafe(list *l, void *info)
 	n->info = info;
 	n->next = l->head;
 	l->head = n;
+	l->count++;
 
 	return list_success;
 }
@@ -74,6 +76,7 @@ void *list_delete_unsafe(list *l, void *info)
 		}
 		void *curr_info = curr->info;
 		free(curr);
+		l->count--;
 		return curr_info;
 	}
 
@@ -90,6 +93,7 @@ list_result list_destroy(list *l)
 		l->head = l->head->next;
 		l->info_destroy(to_delete->info);
 		free(to_delete);
+		l->count--;
 	}
 	pthread_mutex_destroy(&(l->mux));
 	free(l);

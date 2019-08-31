@@ -1,34 +1,4 @@
-// "Server", riceve richieste dai client
-
-// Ha il compito di creare per ogni client una cartella, col nome del client,
-// che conterrà gli "objects" dell'utente.
-// Gli objects sono, in questo caso, array di caratteri che verranno
-// memorizzati in appositi file (con lo stesso nome dell'object).
-// Tutte le cartelle degli utenti sono localizzate nella cartella data,
-// creata dal server.
-// Tutti gli object e i client hanno nomi che rispettano lo standard POSIX
-// e sono univoci all'interno dello stesso spazio di memorizzazione
-
-// L'objStore attende il collegamento su objstore.sock.
-// Crea  un thread per le richieste di ogni client.
-// Quando riceve un messsaggio del client viene tradotto grazie alla lib message.h
-// Che verrà utilizzata anche per inviare la risposta.
-// Risponde sempre!!
-// Quando riceve un segnale risponde il prima possibile mantenendo
-// l'objstore in uno stato consistente.
-
-// Quando il server riceve il segnare SIGUSR1 stampa su stout info
-// sullo stato del server, quali:
-// 	-#client connessi
-// 	-#oggetti nello store
-// 	-size totale dello store
-// 	-...
-// La libreria stats.h si occuperà di stampare tali statistiche.
-// A differenza delle stats del client, per le stats del server servirà
-// una struttura condivisa tra i thread e gestita in maniera threadsafe
-// con apposite lock
-
-#define _XOPEN_SOURCE 500
+#define _POSIX_C_SOURCE 199506L // needed by pthread sigmask
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -46,6 +16,7 @@
 #include "list.h"
 #include "stats.h"
 #include "worker.h"
+
 
 volatile sig_atomic_t _print_stats;
 volatile sig_atomic_t _is_exit;
@@ -117,11 +88,13 @@ int main(int argc, char *argv[])
 	_users = list_create(user_compare,
 						 user_destroy,
 						 user_print);
+	if (_users == NULL) {
+		exit(EXIT_FAILURE);
+	}
 
 	set_sigaction();
 	stats_server_init();
 
-	// Creating data directory
 	struct stat st = {0};
 	if (stat(PATH_DATA, &st) == -1) {
 		mkdir(PATH_DATA, 0700);

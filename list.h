@@ -22,6 +22,7 @@ typedef struct _node{
 
 typedef struct {
 	node *head;
+	int count;
 	pthread_mutex_t mux;
 	fun_info_compare info_compare;
 	fun_info_destroy info_destroy;

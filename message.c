@@ -1,8 +1,7 @@
-#define _POSIX_C_SOURCE 200112L	// needed by strtok_r
+#define _POSIX_C_SOURCE 200112L // needed by strtok_r
 
 #include "message.h"
 #include <stdio.h>
-// #include <stdlib.h>
 #include <math.h>
 #include <string.h>
 #include <sys/types.h>
@@ -237,6 +236,10 @@ message *message_receive(long sock)
 
 int message_send(long sock, message *m)
 {
+	if (m == NULL) {
+		return FALSE;
+	}
+
 	char *header = NULL;
 	message_op op = m->op;
 	char *name = m->name;
