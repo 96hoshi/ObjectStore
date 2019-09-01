@@ -146,7 +146,7 @@ message *message_create(message_op op, char *name, size_t len, void *data)
 	message *m = (message *)calloc(1, sizeof(message));
 	if (m == NULL) return NULL;
 
-	m->buff = NULL;
+	m->header = NULL;
 	m->op = op;
 	m->name = name;
 	m->len = len;
@@ -229,7 +229,7 @@ message *message_receive(long sock)
 	}
 
 	message *m = message_create(op, name, len, data);
-	m->buff = header;
+	m->header = header;
 
 	return m;
 }
@@ -323,7 +323,7 @@ int message_send(long sock, message *m)
 			return FALSE;
 	}
 
-	m->buff = header;
+	m->header = header;
 
 	// send header
 	if (myWrite(sock, header, size) == FALSE) {
@@ -339,7 +339,7 @@ int message_send(long sock, message *m)
 }
 
 // Now message m no more contains data pointer
-void *message_extract_data(message *m)
+void *message_detach_data(message *m)
 {
 	if (m == NULL) return NULL;
 	void *data = m->data;
@@ -351,7 +351,7 @@ void *message_extract_data(message *m)
 void message_destroy(message *m)
 {
 	if (m == NULL) return;
-	if (m->buff != NULL) free(m->buff);
+	if (m->header != NULL) free(m->header);
 	if (m->data != NULL) free(m->data);
 	free(m);
 }

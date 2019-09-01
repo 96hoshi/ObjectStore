@@ -17,7 +17,7 @@ typedef enum {
 } message_op;
 
 typedef struct {
-	char *buff;
+	char *header;
 	message_op op;
 	char *name;
 	size_t len;
@@ -34,7 +34,7 @@ message *message_receive(long sock);
 
 int message_send(long sock, message *m);
 
-void *message_extract_data(message *m);
+void *message_detach_data(message *m);
 
 void message_destroy(message *m);
 

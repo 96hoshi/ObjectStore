@@ -1,14 +1,17 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <common.h>
 #include <protocol.h>
 
-#define N_OBJECTS		20		// Number of objects created
-#define MAX_SIZE		100000	// Maximum object size
-#define MIN_SIZE		100		// Minimum object size
-#define DATANAME_SIZE	7		// Chars needed by the name "xx.txt"
-#define K				5258	// round( (100000-100)/(20 -1) )
+#define N_OBJECTS		20				// Number of objects created
+#define MAX_SIZE		100000			// Maximum object size
+#define MIN_SIZE		100				// Minimum object size
+#define MAX_SIZE_INT	(MAX_SIZE / 4)	// Maximum object size
+#define MIN_SIZE_INT	(MIN_SIZE / 4)	// Minimum object size
+#define DATANAME_SIZE	7				// Chars needed by the name "xx.txt"
+#define K				1315			// ceil( ((100000 - 100) / sizeof(uint32_t))/(20 -1) )
 
 typedef struct {
 	int num_success;
@@ -37,25 +40,20 @@ void updateStats(int result, int test)
 	}
 }
 
+// ritorna il numero di uint32_t che devo mandare/ricevere
 size_t lenAtIndex(size_t i)
 {
-	size_t len = K * i + MIN_SIZE;
-	return (len > MAX_SIZE ? MAX_SIZE : len);
-}
-
-// Returns char from 127 to -128
-char valueAtIndex(size_t i)
-{
-	return (char)(127 - (i % 255));
+	size_t len = K * i + MIN_SIZE_INT;
+	return (len > MAX_SIZE_INT ? MAX_SIZE_INT : len);
 }
 
 void *createData(size_t len)
 {
-	char *data = (char *)calloc(len, sizeof(char));
+	uint32_t *data = (uint32_t *)calloc(len, sizeof(uint32_t));
 	if (data == NULL) return NULL;
 
-	for (size_t i = 0; i < len; ++i) {
-		data[i] = valueAtIndex(i);
+	for (uint32_t i = 0; i < len; ++i) {
+		data[i] = i;
 	}
 
 	return (void *)data;
@@ -63,10 +61,10 @@ void *createData(size_t len)
 
 int checkData(void *block, size_t len)
 {
-	char *data = (char *)block;
+	uint32_t *data = (uint32_t *)block;
 
-	for (size_t i = 0; i < len; ++i) {
-		if (data[i] != valueAtIndex(i)) {
+	for (uint32_t i = 0; i < len; ++i) {
+		if (data[i] != i) {
 			return FALSE;
 		}
 	}
@@ -88,7 +86,7 @@ int makeTest1()
 			continue;
 		}
 
-		int result = os_store(dataname, data, len);
+		int result = os_store(dataname, data, len * sizeof(uint32_t));
 		free(data);
 
 		if (result == FALSE) {

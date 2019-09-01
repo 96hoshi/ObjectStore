@@ -35,7 +35,7 @@ static int sendAndReceive(message *sent)
 	}
 
 	if (sent->op == message_store) {
-		message_extract_data(sent); // avoid to release not owned data
+		message_detach_data(sent); // avoid to release not owned data
 	}
 
 	message_destroy(sent);
@@ -97,7 +97,7 @@ void *os_retrieve(char *name)
 	}
 
 	if (received->op == message_data) {
-		data = message_extract_data(received);
+		data = message_detach_data(received);
 	}
 
 	if (received->op == message_ko) {

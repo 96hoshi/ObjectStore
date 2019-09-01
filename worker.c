@@ -29,6 +29,7 @@ static void workersIncrement()
 	_workers++;
 	pthread_mutex_unlock(&_workers_mux);
 }
+
 static void workersDecrement()
 {
 	pthread_mutex_lock(&_workers_mux);
@@ -110,7 +111,7 @@ static int fileDelete(char *dataname, char *clientname)
 }
 
 
-int handle_register(message *m, user **client)
+static int handle_register(message *m, user **client)
 {
 	char *name = m->name;
 
@@ -135,7 +136,7 @@ int handle_register(message *m, user **client)
 	return TRUE;
 }
 
-int handle_store(message *m, user *client)
+static int handle_store(message *m, user *client)
 {
 	if (client == NULL) return FALSE;
 
@@ -159,7 +160,7 @@ int handle_store(message *m, user *client)
 	return TRUE;
 }
 
-void *handle_retrieve(message *m, user *client, size_t *len)
+static void *handle_retrieve(message *m, user *client, size_t *len)
 {
 	if (client == NULL) {
 		return NULL;
@@ -177,7 +178,7 @@ void *handle_retrieve(message *m, user *client, size_t *len)
 	return fileRetrive(dataname, *len, name);
 }
 
-int handle_delete(message *m, user *client)
+static int handle_delete(message *m, user *client)
 {
 	if (client == NULL) {
 		return FALSE;
@@ -204,7 +205,7 @@ int handle_delete(message *m, user *client)
 	return TRUE;
 }
 
-void *handle_client(void *arg)
+static void *handle_client(void *arg)
 {
 	workersIncrement();
 
@@ -291,6 +292,7 @@ void *handle_client(void *arg)
 
 	return NULL;
 }
+
 
 void worker_spawn(long fd_c)
 {
