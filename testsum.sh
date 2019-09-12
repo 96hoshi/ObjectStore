@@ -3,13 +3,15 @@
 awk -F ' ' '
 BEGIN {anom=0}
 {
-a[$1]+=$2;
-success+=$3;
-fail+=$4;
+total[$1]+=$2;
+success[$1]+=$3;
+fail[$1]+=$4;
 if ($4 > 0) anom+=1
 }
 END {
-for (i in a)
+for (i in total)
 	print i "\nTotal operations: ",
-	a[i]"\nSuccessful operations: " success "\nFailed operations: " fail "\nAnomalous clients: "anom
+	total[i]"\nSuccessful operations: ",
+	success[i] "\nFailed operations: ",
+	fail[i] "\nAnomalous clients: " anom
 }' testout.log
