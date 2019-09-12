@@ -207,6 +207,10 @@ static int handle_delete(message *m, user *client)
 
 static void *handle_client(void *arg)
 {
+	sigset_t thread_set;
+	sigfillset(&thread_set);
+	pthread_sigmask(SIG_BLOCK, &thread_set, NULL);
+
 	workersIncrement();
 
 	long fd_c = (long)arg;
@@ -296,10 +300,6 @@ static void *handle_client(void *arg)
 
 void worker_spawn(long fd_c)
 {
-	sigset_t thread_set;
-	sigemptyset(&thread_set);
-	pthread_sigmask(SIG_BLOCK, &thread_set, NULL);
-
 	pthread_attr_t thread_attributes;
 
 	if (pthread_attr_init(&thread_attributes) != 0) {
@@ -317,4 +317,5 @@ void worker_spawn(long fd_c)
 
 	pthread_t worker;
 	pthread_create(&worker, &thread_attributes, &handle_client, (void *)fd_c);
+
 }
